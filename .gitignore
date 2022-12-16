@@ -1,6 +1,6 @@
 #dir
 /dataset
-/visualize.py
+/visualize
 
 #file
 *.png
