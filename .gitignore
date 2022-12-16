@@ -1,0 +1,8 @@
+#dir
+/dataset
+/visualize.py
+
+#file
+*.png
+*.zip
+*.docx
