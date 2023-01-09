@@ -506,38 +506,55 @@ def pearson(labels=None):
         sns.heatmap(overall_pearson_r, cmap="Greens", annot=True)
 
 
-raw_data_image()
+def visualize_vma(sample_number=100, position=None):
+    for label in all_group_number:
+        csv_data = pd.read_csv(os.path.join("dataset/truncate", label + '.csv'))
+        np_data = np.array(csv_data)
+        if position is None:
+            ts = np.array(np_data[:, 0])
+            vertical = np.array(np_data[:, 1])
+            mediolateral = np.array(np_data[:, 2])
+            anteroposterior = np.array(np_data[:, 3])
+        elif position == 'first':
 
-frequency_by_FFT(all_group_number)
-# visualize_one_person(all_group_number)
+            ts = np.array(np_data[0:sample_number, 0])
+            vertical = np.array(np_data[0:sample_number, 1])
+            mediolateral = np.array(np_data[0:sample_number, 2])
+            anteroposterior = np.array(np_data[0:sample_number, 3])
 
-# for DMD in DMD_group_number:
-#     for TD in TD_group_number:
-#         # compare_frequency(['990023011', '990023015'], axis_marker=axix_maker)
-#         compare_frequency([DMD, TD])
+            if label == '990017':
+                ts = np.array(np_data[50:sample_number+50, 0])
+                vertical = np.array(np_data[50:sample_number+50, 1])
+                mediolateral = np.array(np_data[50:sample_number+50, 2])
+                anteroposterior = np.array(np_data[50:sample_number+50, 3])
 
-# sanity check for downsampling
-# label = '990023003'
-# txt_dir = './visualize/FFT/downsample/990023003/990023003_x_FFT_result.txt'
-# csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
-# np_data = np.array(csv_data)
-# ts_raw = np.array(np_data[:, 0])
-# x_raw = np.array(np_data[:, 1])
-# x = x_raw[:ts_raw.size:3]
-# ts = ts_raw[:ts_raw.size:3]
-# # yf = np.loadtxt(txt_dir, delimiter=',').view(complex).reshape(-1)[:ts.shape[0] // 2]
-# yf = fft(x)[:ts.shape[0] // 2]
-# yf = yf / ts.shape[0]
-# xf = fftfreq(ts.shape[0], (ts[-1] - ts[0]) / ts.shape[0])[:ts.shape[0] // 2]
-#
-# txt_dir_raw = './visualize/FFT/990023003/990023003_x_FFT_result.txt'
-# yf_raw = fft(x_raw)[:ts_raw.shape[0] // 2]
-# xf_raw = fftfreq(ts_raw.shape[0], (ts_raw[-1] - ts_raw[0]) / ts_raw.shape[0])[:ts_raw.shape[0] // 2]
-# fig, ax = plt.subplots(figsize=(15, 9))
-# size = xf_raw[xf_raw < np.max(xf)].shape[0]
-# yf_raw = yf_raw / ts_raw.shape[0]
-# ax.plot(xf_raw[:size], np.abs(yf_raw[:size]), label='raw but trimmed')
-# # ax.plot(xf_raw, np.abs(yf_raw), label='raw but trimmed')
-# ax.plot(xf, np.abs(yf), label='downsample')
-# ax.legend()
-# plt.show()
+            label = 'first' + str(sample_number) + 'th' + label
+        elif position == 'last':
+            ts = np.array(np_data[-sample_number:-1, 0])
+            vertical = np.array(np_data[-sample_number:-1, 1])
+            mediolateral = np.array(np_data[-sample_number:-1, 2])
+            anteroposterior = np.array(np_data[-sample_number:-1, 3])
+
+            if label == '990018':
+                ts = np.array(np_data[-(sample_number+50):-50, 0])
+                vertical = np.array(np_data[-(sample_number+50):-50, 1])
+                mediolateral = np.array(np_data[-(sample_number+50):-50, 2])
+                anteroposterior = np.array(np_data[-(sample_number+50):-50, 3])
+
+            label = 'last'+str(sample_number)+'th'+label
+        else:
+            raise Exception("Sorry, position wrong")
+        fig, ax = plt.subplots(figsize=(10, 6), dpi=400)
+        ax.plot(ts, vertical, label='vertical')
+        ax.plot(ts, mediolateral, label='mediolateral')
+        ax.plot(ts, anteroposterior, label='anteroposterior')
+
+        ax.set_xlabel("record: " + label)
+        ax.set_ylabel("sensor data")
+        ax.legend()
+        plt.savefig(os.path.join('./visualize/vma', label))
+
+
+
+
+visualize_vma()

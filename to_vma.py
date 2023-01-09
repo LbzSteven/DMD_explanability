@@ -24,7 +24,7 @@ low_sample_rate = ['990012', '990014', '990015', '990016', '990017', '990018']
 high_sample_rate = ['990023003', '990023008', '990023010', '990023011', '990023014', '990023015']
 
 
-def get_data_label(numbers=None):
+def raw_to_vma(numbers=None):
     if numbers is None:
         numbers = all_group_number
     for number in numbers:
@@ -50,4 +50,38 @@ def get_data_label(numbers=None):
             maker = 'TD'
 
 
-get_data_label()
+def vam_to_truncated(numbers=None):
+    if numbers is None:
+        numbers = all_group_number
+    for number in numbers:
+        csv_data = pd.read_csv(os.path.join("dataset/vma", number + '.csv'))
+        np_data = np.array(csv_data)
+
+        if number == '990017':
+            ts = np.array(np_data[50:, 0])
+            vertical = np.array(np_data[50:, 1])
+            mediolateral = np.array(np_data[50:, 2])
+            anteroposterior = np.array(np_data[50:, 3])
+
+        elif number == '990018':
+            ts = np.array(np_data[:-50, 0])
+            vertical = np.array(np_data[:-50, 1])
+            mediolateral = np.array(np_data[:-50, 2])
+            anteroposterior = np.array(np_data[:-50, 3])
+
+        else:
+            ts = np.array(np_data[:, 0])
+            vertical = np.array(np_data[:, 1])
+            mediolateral = np.array(np_data[:, 2])
+            anteroposterior = np.array(np_data[:, 3])
+
+        dataframe = pd.DataFrame({'ts': ts, 'v': vertical, 'm': mediolateral, 'a': anteroposterior})
+        dataframe.to_csv(os.path.join("dataset", "truncate", number + '.csv'), index=False, sep=',')
+        if number in DMD_group_number:
+            maker = 'DMD'
+        else:
+            maker = 'TD'
+
+
+# raw_to_vma()
+vam_to_truncated()
