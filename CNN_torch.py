@@ -26,7 +26,7 @@ class CNN_DMD(nn.Module):
         self.fc2 = nn.Sequential(
             nn.Dropout(0.5),
             nn.Linear(2 + 2 * F_NODE, N_OF_CLASSES),
-            nn.ReLU())
+            nn.Softmax())
 
     def forward(self, x):
         x = self.layer2(self.layer1(x))
