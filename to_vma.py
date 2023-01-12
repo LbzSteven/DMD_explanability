@@ -83,5 +83,28 @@ def vam_to_truncated(numbers=None):
             maker = 'TD'
 
 
+def truncated_to_downsample():
+    for number in high_sample_rate:
+        csv_data = pd.read_csv(os.path.join("dataset/truncate", number + '.csv'))
+        np_data = np.array(csv_data)
+
+        ts = np.array(np_data[0:-1:3, 0])
+        vertical = np.array(np_data[0:-1:3, 1])
+        mediolateral = np.array(np_data[0:-1:3, 2])
+        anteroposterior = np.array(np_data[0:-1:3, 3])
+
+        dataframe = pd.DataFrame({'ts': ts, 'v': vertical, 'm': mediolateral, 'a': anteroposterior})
+        dataframe.to_csv(os.path.join("dataset", "downsample", number + '.csv'), index=False, sep=',')
+
+    for number in low_sample_rate:
+        csv_data = pd.read_csv(os.path.join("dataset/truncate", number + '.csv'))
+        np_data = np.array(csv_data)
+        ts = np.array(np_data[:, 0])
+        vertical = np.array(np_data[:, 1])
+        mediolateral = np.array(np_data[:, 2])
+        anteroposterior = np.array(np_data[:, 3])
+        dataframe = pd.DataFrame({'ts': ts, 'v': vertical, 'm': mediolateral, 'a': anteroposterior})
+        dataframe.to_csv(os.path.join("dataset", "downsample", number + '.csv'), index=False, sep=',')
+
 # raw_to_vma()
-vam_to_truncated()
+truncated_to_downsample()
