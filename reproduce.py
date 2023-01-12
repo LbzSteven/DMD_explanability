@@ -20,8 +20,8 @@ WINDOW_SIZE = 33
 WINDOW_STEP = 33
 LEARN_RATE = 0.001
 BATCH_SIZE = 128
-EPOCH = 1000
-NUM_WORKERS = 4
+EPOCH = 100000
+NUM_WORKERS = 16
 
 paitent_makers, window_labels, window_data = window_oper(all_group_number, WINDOW_SIZE, WINDOW_STEP)
 
@@ -36,10 +36,10 @@ window_data = np.array(window_data)
 # )
 transforms = None
 correct = 0
-total = len(DMD_group_number)
-
+total = len(all_group_number)
+j =0
 for number in all_group_number:
-
+    j +=1
     testing_idx = [i for i, x in enumerate(paitent_makers) if x == number]
     training_idx = [i for i, x in enumerate(paitent_makers) if x != number]
 
@@ -61,6 +61,7 @@ for number in all_group_number:
     net = CNN_DMD(WINDOW_SIZE).float().to(device)
     optimizer = optim.Adam(net.parameters())
     loss_function = nn.CrossEntropyLoss()
+    # print('patient: ', number, ' train start')
     for epoch in range(EPOCH):
         running_loss = 0
         for i, (sample) in enumerate(trainloader, 0):
@@ -76,8 +77,10 @@ for number in all_group_number:
             optimizer.step()
 
             running_loss += loss.item()
+        # print(running_loss)
     window_correct = 0
     window_total = 0
+    # print('patient: ', number, ' train finished')
     with torch.no_grad():
         for i, sample in enumerate(testloader, 0):
             labels, data = sample['label'].to(device).to(torch.int64), sample['data'].to(device).float()
@@ -87,11 +90,16 @@ for number in all_group_number:
             window_total += labels.size(0)
 
             window_correct += (predicted == labels).sum().item()
+            print(predicted)
+            print(labels)
+            print(window_correct)
+            print(window_total)
     correct_percentage = window_correct / window_total
-    print("correct_percentage: %.2f" % correct_percentage)
+
     if correct_percentage > 0.5:
         correct += 1
-        print('patient: ', number, ' predict correct')
+        print(' patient: %s predict correct, percentage:%.2f,loss:%.5f' % (number,  correct_percentage, running_loss))
     else:
-        print('patient: ', number, ' predict wrong')
+        print(' patient: %s predict wrong, percentage:%.2f,loss:%.5f' % (number,  correct_percentage, running_loss))
+
 print('total correct percentage:', correct / total)
