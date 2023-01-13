@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="d4becfd4-97f4-470a-9668-dec6ad636f66" name="Barbel">
+        <fileTransfer accessType="SFTP" host="barbel.cs.ucdavis.edu" port="2222" sshConfigId="b6ff8740-0f26-4906-b045-9519fb21e721" sshConfig="zwkan@barbel.cs.ucdavis.edu:2222 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

@@ -22,18 +22,21 @@ class CNN_DMD(nn.Module):
         self.fc1 = nn.Sequential(
             nn.Dropout(0.2),
             nn.Linear((N_OF_L + 1) * F_NODE * (window_size - N_OF_L - 1), 2 + 2 * F_NODE),
+            # nn.Linear((N_OF_L + 1) * F_NODE * (window_size - N_OF_L - 1), 100),
             nn.ReLU())
         self.fc2 = nn.Sequential(
             nn.Dropout(0.5),
             nn.Linear(2 + 2 * F_NODE, N_OF_CLASSES),
-            # nn.Softmax(dim=1)
-            nn.Sigmoid()
+            # nn.Linear(100, N_OF_CLASSES),
+            nn.Softmax(dim=1)
+            # nn.Sigmoid()
         )
 
     def forward(self, x):
         x = self.layer2(self.layer1(x))
         # print(self.layer1.parameters())
         x = x.view(-1, (1 + 1) * self.F_NODE * (self.window_size - 1 - 1))
+
         # x = self.fc2(self.fc1(x))
         x = self.fc1(x)
         # print(x.shape)
