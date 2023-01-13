@@ -36,7 +36,7 @@ transforms = None
 
 
 def CNN_debug():
-    EPOCH = 200
+    EPOCH = 1000
     WINDOW_STEP = 50 #33
     WINDOW_SIZE = 50 #33
     correct = 0
@@ -132,9 +132,9 @@ def CNN_debug():
         ax.legend()
 
         ax = plt.subplot(312)
-        ax.plot(range(EPOCH), test_acc_epoch, label='train_acc_epoch')
+        ax.plot(range(EPOCH), test_acc_epoch, label='test_acc_epoch')
         ax.set_xlabel('epoch')
-        ax.set_ylabel('train_acc_epoch')
+        ax.set_ylabel('test_acc_epoch')
         ax.grid()
         ax.legend()
 
@@ -153,10 +153,6 @@ exit()
 
 j = 0
 
-
-
-CNN_debug()
-exit()
 
 for EPOCH in [100, 500, 1000, 5000, 10000, 50000]:
     for WINDOW_SIZE in [30, 33, 90, 100]:
