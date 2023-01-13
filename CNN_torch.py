@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-
+import torch.nn.init as init
 N_OF_CLASSES = 2
 
 
@@ -26,21 +26,39 @@ class CNN_DMD(nn.Module):
         self.fc2 = nn.Sequential(
             nn.Dropout(0.5),
             nn.Linear(2 + 2 * F_NODE, N_OF_CLASSES),
-            nn.Softmax(dim=1))
+            # nn.Softmax(dim=1)
+            nn.Sigmoid()
+        )
 
     def forward(self, x):
         x = self.layer2(self.layer1(x))
+        # print(self.layer1.parameters())
         x = x.view(-1, (1 + 1) * self.F_NODE * (self.window_size - 1 - 1))
-        x = self.fc2(self.fc1(x))
+        # x = self.fc2(self.fc1(x))
+        x = self.fc1(x)
+        # print(x.shape)
+        x = self.fc2(x)
         return x
 
-
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                # init.orthogonal_(m.weight)
+                # init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    init.constant_(m.bias, 0)
+            if isinstance(m,nn.Linear):
+                # init.orthogonal_(m.weight)
+                # init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    init.constant_(m.bias, 0)
 if __name__ == '__main__':
     CNN = CNN_DMD(10).double()
-    print(CNN)
+    # print(CNN)
     input = np.random.randn(16, 1, 3, 10)
 
     input = torch.from_numpy(input).double()
-    print(input.dtype)
+    # print(input.dtype)
     output = CNN(input)
-    print(output.shape)
+    # print(output.shape)
+    # print(output)
