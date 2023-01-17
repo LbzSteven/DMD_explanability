@@ -58,17 +58,29 @@ def vam_to_truncated(numbers=None):
         csv_data = pd.read_csv(os.path.join("dataset/vma", number + '.csv'))
         np_data = np.array(csv_data)
 
-        if number == '990017':
-            ts = np.array(np_data[50:, 0])
-            vertical = np.array(np_data[50:, 1])
-            mediolateral = np.array(np_data[50:, 2])
-            anteroposterior = np.array(np_data[50:, 3])
+        if number == '990012':
+            ts = np.array(np_data[:-15, 0])
+            vertical = np.array(np_data[:-15, 1])
+            mediolateral = np.array(np_data[:-15, 2])
+            anteroposterior = np.array(np_data[:-15, 3])
+
+        elif number == '990017':
+            ts = np.array(np_data[50:-33, 0])
+            vertical = np.array(np_data[50:-33, 1])
+            mediolateral = np.array(np_data[50:-33, 2])
+            anteroposterior = np.array(np_data[50:-33, 3])
 
         elif number == '990018':
-            ts = np.array(np_data[:-50, 0])
-            vertical = np.array(np_data[:-50, 1])
-            mediolateral = np.array(np_data[:-50, 2])
-            anteroposterior = np.array(np_data[:-50, 3])
+            ts = np.array(np_data[15:-50, 0])
+            vertical = np.array(np_data[15:-50, 1])
+            mediolateral = np.array(np_data[15:-50, 2])
+            anteroposterior = np.array(np_data[15:-50, 3])
+
+        elif number == '990023014':
+            ts = np.array(np_data[150:, 0])
+            vertical = np.array(np_data[150:, 1])
+            mediolateral = np.array(np_data[150:, 2])
+            anteroposterior = np.array(np_data[150:, 3])
 
         else:
             ts = np.array(np_data[:, 0])
@@ -108,4 +120,5 @@ def truncated_to_downsample():
         dataframe.to_csv(os.path.join("dataset", "downsample", number + '.csv'), index=False, sep=',')
 
 # raw_to_vma()
+vam_to_truncated()
 truncated_to_downsample()

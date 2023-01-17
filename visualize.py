@@ -130,8 +130,9 @@ def normalized_data_image_all(labels=None):  # wrong way to do it
 
 
 def time_intervals_checking():
-    for csv_file_name in dir_list:
-        csv_data = pd.read_csv(os.path.join("dataset", csv_file_name))
+    for label in all_group_number:
+        csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
+        # np_data = np.array(csv_data)
         np_data = np.array(csv_data)
         ts = np.array(np_data[:, 0])
         average_intervals = (ts[-1] - ts[0]) / (ts.shape[0] - 1)
@@ -140,9 +141,9 @@ def time_intervals_checking():
         for i in range(ts.shape[0] - 1):
             variance += (ts[i + 1] - ts[i] - average_intervals) ** 2
         variance = variance / (ts.shape[0] - 1)
-        print("average intervals for:", csv_file_name.split('.')[0], "is", average_intervals)
-        print("variance for intervals:", csv_file_name.split('.')[0], "is", variance)
-        print("sample rate:", csv_file_name.split('.')[0], "is", sample_rate)
+        print("average intervals for:", label, "is", average_intervals)
+        print("variance for intervals:", label, "is", variance)
+        print("sample rate:", label, "is", sample_rate)
 
 
 def mapping_same_x_for_first_six():
@@ -506,42 +507,57 @@ def pearson(labels=None):
         sns.heatmap(overall_pearson_r, cmap="Greens", annot=True)
 
 
-def visualize_vma(sample_number=100, position=None):
+def visualize_vma(sample_number=100, position='truncate'):
     for label in all_group_number:
-        csv_data = pd.read_csv(os.path.join("dataset/truncate", label + '.csv'))
+
+
+        csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
         np_data = np.array(csv_data)
+
         if position is None:
             ts = np.array(np_data[:, 0])
             vertical = np.array(np_data[:, 1])
             mediolateral = np.array(np_data[:, 2])
             anteroposterior = np.array(np_data[:, 3])
-        elif position == 'first':
+        if position == 'truncate':
+            csv_data = pd.read_csv(os.path.join("dataset/truncate", label + '.csv'))
+            np_data = np.array(csv_data)
+            ts = np.array(np_data[:, 0])
+            vertical = np.array(np_data[:, 1])
+            mediolateral = np.array(np_data[:, 2])
+            anteroposterior = np.array(np_data[:, 3])
+            label = 'truncate' + label
 
+        elif position == 'first':
+            if label in high_sample_rate:
+                sample_number = 300
             ts = np.array(np_data[0:sample_number, 0])
             vertical = np.array(np_data[0:sample_number, 1])
             mediolateral = np.array(np_data[0:sample_number, 2])
             anteroposterior = np.array(np_data[0:sample_number, 3])
 
-            if label == '990017':
-                ts = np.array(np_data[50:sample_number+50, 0])
-                vertical = np.array(np_data[50:sample_number+50, 1])
-                mediolateral = np.array(np_data[50:sample_number+50, 2])
-                anteroposterior = np.array(np_data[50:sample_number+50, 3])
+            # if label == '990017':
+            #     ts = np.array(np_data[50:sample_number+50, 0])
+            #     vertical = np.array(np_data[50:sample_number+50, 1])
+            #     mediolateral = np.array(np_data[50:sample_number+50, 2])
+            #     anteroposterior = np.array(np_data[50:sample_number+50, 3])
 
             label = 'first' + str(sample_number) + 'th' + label
         elif position == 'last':
+            if label in high_sample_rate:
+                sample_number = 300
             ts = np.array(np_data[-sample_number:-1, 0])
             vertical = np.array(np_data[-sample_number:-1, 1])
             mediolateral = np.array(np_data[-sample_number:-1, 2])
             anteroposterior = np.array(np_data[-sample_number:-1, 3])
 
-            if label == '990018':
-                ts = np.array(np_data[-(sample_number+50):-50, 0])
-                vertical = np.array(np_data[-(sample_number+50):-50, 1])
-                mediolateral = np.array(np_data[-(sample_number+50):-50, 2])
-                anteroposterior = np.array(np_data[-(sample_number+50):-50, 3])
+            # if label == '990018':
+            #     ts = np.array(np_data[-(sample_number+50):-50, 0])
+            #     vertical = np.array(np_data[-(sample_number+50):-50, 1])
+            #     mediolateral = np.array(np_data[-(sample_number+50):-50, 2])
+            #     anteroposterior = np.array(np_data[-(sample_number+50):-50, 3])
 
-            label = 'last'+str(sample_number)+'th'+label
+            label = 'last' + str(sample_number) + 'th' + label
         else:
             raise Exception("Sorry, position wrong")
         fig, ax = plt.subplots(figsize=(10, 6), dpi=400)
@@ -555,6 +571,5 @@ def visualize_vma(sample_number=100, position=None):
         plt.savefig(os.path.join('./visualize/vma', label))
 
 
-
-
 visualize_vma()
+# time_intervals_checking()

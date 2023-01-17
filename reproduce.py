@@ -6,25 +6,28 @@ from matplotlib import pyplot as plt
 from torch import nn
 
 from window import window_oper
-from CNN_torch import CNN_DMD
-from dataset import DMDDataset
+from CNN_torch import CNN_DMD, CNN_var
+from DMDdataset import DMDDataset
 from result_record import csv_writer
-import torchvision.transforms as transforms
+# import torchvision.transforms as transforms
 import torch.optim as optim
+import torch.nn.functional as F
 
 DMD_group_number = ['990012', '990015', '990016', '990023008', '990023010', '990023015']
 TD_group_number = ['990014', '990017', '990018', '990023003', '990023011', '990023014']
-all_group_number = ['990012', '990014', '990015', '990016', '990017', '990018', '990023008', '990023010', '990023015',
-                    '990023003', '990023011', '990023014']
+all_group_number = ['990012', '990014', '990015', '990016', '990017', '990018', '990023003', '990023008',
+                    '990023010', '990023011', '990023014', '990023015', ]
 low_sample_rate = ['990012', '990014', '990015', '990016', '990017', '990018']
 high_sample_rate = ['990023003', '990023008', '990023010', '990023011', '990023014', '990023015']
 
 # WINDOW_SIZE = 33
 # WINDOW_STEP = 33
-LEARN_RATE = 0.001
+LEARN_RATE = 0.0001
 BATCH_SIZE = 128
 # EPOCH = 100000
 NUM_WORKERS = 0
+np.random.seed(1)
+
 
 # 12 fold training and test
 # transforms = transforms.Compose(
@@ -32,18 +35,28 @@ NUM_WORKERS = 0
 #         transforms.ToTensor(),
 #     ]
 # )
-transforms = None
 
+def normalize(window_data):
+    t = np.moveaxis(window_data, 1, 2)
+    max_3_axis = np.max(t.reshape(-1, 3), axis=0)
+    min_3_axis = np.min(t.reshape(-1, 3), axis=0)
+    for i in range(3):
+        t[:, :, i] = (t[:, :, i] - min_3_axis[i]) / (max_3_axis[i] - min_3_axis[i])
 
+    window_data = np.moveaxis(t, 1, 2)
+    return window_data
 def CNN_debug():
-    EPOCH = 1000
-    WINDOW_STEP = 50 #33
-    WINDOW_SIZE = 50 #33
+    EPOCH = 100
+    WINDOW_STEP = 1  # 33
+    WINDOW_SIZE = 50  # 33
     correct = 0
+    correct_person = []
     total = len(all_group_number)
     paitent_makers, window_labels, window_data = window_oper(all_group_number, WINDOW_SIZE, WINDOW_STEP)
+
     window_labels = np.array(window_labels)
-    window_data = np.array(window_data)
+    window_data = normalize(window_data)
+
     print('current: EPOCH %d W_SIZE %d W_STEP %d' % (EPOCH, WINDOW_SIZE, WINDOW_STEP))
 
     for number in all_group_number:
@@ -52,15 +65,17 @@ def CNN_debug():
         loss_epoch = []
         testing_idx = [i for i, x in enumerate(paitent_makers) if x == number]
         training_idx = [i for i, x in enumerate(paitent_makers) if x != number]
-
+        # training_idx = range(len(paitent_makers))
         testing_labels = window_labels[testing_idx]
         testing_data = window_data[testing_idx, :]
         training_labels = window_labels[training_idx]
         training_data = window_data[training_idx, :]
 
-        trainset = DMDDataset(training_labels, training_data, transforms)
-        testset = DMDDataset(testing_labels, testing_data, transforms)
-
+        # print(np.bincount(training_labels))
+        trainset = DMDDataset(training_labels, training_data, dimension=1)
+        testset = DMDDataset(testing_labels, testing_data, dimension=1)
+        # trainset = DMDDataset(training_labels, training_data)
+        # testset = DMDDataset(testing_labels, testing_data)
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
                                                   shuffle=True)
         testloader = torch.utils.data.DataLoader(testset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
@@ -68,7 +83,8 @@ def CNN_debug():
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        net = CNN_DMD(WINDOW_SIZE).float().to(device)
+        # net = CNN_DMD(WINDOW_SIZE).float().to(device)
+        net = CNN_var(WINDOW_SIZE).float().to(device)
         optimizer = optim.Adam(net.parameters())
         loss_function = nn.CrossEntropyLoss()
         # print('patient: ', number, ' train start')
@@ -100,8 +116,6 @@ def CNN_debug():
                     outputs = net(data)
                     _, predicted = torch.max(outputs.data, 1)
                     window_total_test += labels.size(0)
-                    # print(predicted)
-                    # print(labels)
                     # print(window_total_test)
                     window_correct_test += (predicted == labels).sum().item()
 
@@ -115,10 +129,13 @@ def CNN_debug():
                     window_correct_train += (predicted == labels).sum().item()
             correct_percentage_test = window_correct_test / window_total_test
             correct_percentage_train = window_correct_train / window_total_train
-            if epoch == EPOCH - 1 and correct_percentage_test > 0.5:
-                correct += 1
-            print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f' % (
-            number, epoch, correct_percentage_train, correct_percentage_test, running_loss))
+
+            if epoch == EPOCH - 1:
+                if correct_percentage_test > 0.5:
+                    correct += 1
+                    correct_person.append(number)
+                # print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f' % (
+                #     number, epoch, correct_percentage_train, correct_percentage_test, running_loss))
             train_acc_epoch.append(correct_percentage_train)
             test_acc_epoch.append(correct_percentage_test)
             loss_epoch.append(running_loss)
@@ -147,12 +164,14 @@ def CNN_debug():
 
         plt.savefig(os.path.join('visualize/CNN_acc_loss', number))
 
-    print('total acc: %.3f' % (correct/total))
+    print('total acc: %.3f' % (correct / total))
+    print(correct_person)
+
+
 CNN_debug()
 exit()
 
 j = 0
-
 
 for EPOCH in [100, 500, 1000, 5000, 10000, 50000]:
     for WINDOW_SIZE in [30, 33, 90, 100]:
@@ -173,8 +192,8 @@ for EPOCH in [100, 500, 1000, 5000, 10000, 50000]:
                 training_labels = window_labels[training_idx]
                 training_data = window_data[training_idx, :]
 
-                trainset = DMDDataset(training_labels, training_data, transforms)
-                testset = DMDDataset(testing_labels, testing_data, transforms)
+                trainset = DMDDataset(training_labels, training_data)
+                testset = DMDDataset(testing_labels, testing_data)
 
                 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
                                                           shuffle=True)
