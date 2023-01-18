@@ -3,8 +3,8 @@ import os
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.fft import fft, fftfreq
+# import matplotlib.pyplot as plt
+# from scipy.fft import fft, fftfreq
 
 dir_list = os.listdir("dataset")
 

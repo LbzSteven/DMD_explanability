@@ -46,7 +46,7 @@ def normalize(window_data):
     window_data = np.moveaxis(t, 1, 2)
     return window_data
 def CNN_debug():
-    EPOCH = 100
+    EPOCH = 30
     WINDOW_STEP = 1  # 33
     WINDOW_SIZE = 50  # 33
     correct = 0
@@ -72,10 +72,10 @@ def CNN_debug():
         training_data = window_data[training_idx, :]
 
         # print(np.bincount(training_labels))
-        trainset = DMDDataset(training_labels, training_data, dimension=1)
-        testset = DMDDataset(testing_labels, testing_data, dimension=1)
-        # trainset = DMDDataset(training_labels, training_data)
-        # testset = DMDDataset(testing_labels, testing_data)
+        # trainset = DMDDataset(training_labels, training_data, dimension=1)
+        # testset = DMDDataset(testing_labels, testing_data, dimension=1)
+        trainset = DMDDataset(training_labels, training_data)
+        testset = DMDDataset(testing_labels, testing_data)
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
                                                   shuffle=True)
         testloader = torch.utils.data.DataLoader(testset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
@@ -83,8 +83,8 @@ def CNN_debug():
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        # net = CNN_DMD(WINDOW_SIZE).float().to(device)
-        net = CNN_var(WINDOW_SIZE).float().to(device)
+        net = CNN_DMD(WINDOW_SIZE).float().to(device)
+        # net = CNN_var(WINDOW_SIZE).float().to(device)
         optimizer = optim.Adam(net.parameters())
         loss_function = nn.CrossEntropyLoss()
         # print('patient: ', number, ' train start')
