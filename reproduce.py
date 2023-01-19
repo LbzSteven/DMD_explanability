@@ -1,4 +1,5 @@
 import os
+import random
 
 import numpy as np
 import torch
@@ -6,7 +7,7 @@ from matplotlib import pyplot as plt
 from torch import nn
 
 from window import window_oper
-from CNN_torch import CNN_DMD, CNN_var
+from CNN_torch import CNN_DMD, CNN_var, CNN_Pooling
 from DMDdataset import DMDDataset
 from result_record import csv_writer
 # import torchvision.transforms as transforms
@@ -48,7 +49,7 @@ def normalize(window_data):
 def CNN_debug():
     EPOCH = 30
     WINDOW_STEP = 1  # 33
-    WINDOW_SIZE = 50  # 33
+    WINDOW_SIZE = 48  # 33
     correct = 0
     correct_person = []
     total = len(all_group_number)
@@ -65,6 +66,11 @@ def CNN_debug():
         loss_epoch = []
         testing_idx = [i for i, x in enumerate(paitent_makers) if x == number]
         training_idx = [i for i, x in enumerate(paitent_makers) if x != number]
+
+
+        # testing_idx = random.sample(range(len(paitent_makers)),int(len(paitent_makers)/12))
+        # training_idx = [i for i in range(len(paitent_makers)) if i not in testing_idx]
+        # testing_idx = range(len(paitent_makers))
         # training_idx = range(len(paitent_makers))
         testing_labels = window_labels[testing_idx]
         testing_data = window_data[testing_idx, :]
@@ -72,10 +78,10 @@ def CNN_debug():
         training_data = window_data[training_idx, :]
 
         # print(np.bincount(training_labels))
-        # trainset = DMDDataset(training_labels, training_data, dimension=1)
-        # testset = DMDDataset(testing_labels, testing_data, dimension=1)
-        trainset = DMDDataset(training_labels, training_data)
-        testset = DMDDataset(testing_labels, testing_data)
+        trainset = DMDDataset(training_labels, training_data, dimension=1)
+        testset = DMDDataset(testing_labels, testing_data, dimension=1)
+        # trainset = DMDDataset(training_labels, training_data)
+        # testset = DMDDataset(testing_labels, testing_data)
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
                                                   shuffle=True)
         testloader = torch.utils.data.DataLoader(testset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
@@ -83,13 +89,14 @@ def CNN_debug():
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        net = CNN_DMD(WINDOW_SIZE).float().to(device)
-        # net = CNN_var(WINDOW_SIZE).float().to(device)
+        # net = CNN_DMD(WINDOW_SIZE).float().to(device)
+        net = CNN_Pooling(WINDOW_SIZE).float().to(device)
         optimizer = optim.Adam(net.parameters())
         loss_function = nn.CrossEntropyLoss()
         # print('patient: ', number, ' train start')
         for epoch in range(EPOCH):
             running_loss = 0
+            net.train()
             for i, (sample) in enumerate(trainloader, 0):
                 # get the inputs
 
@@ -109,24 +116,25 @@ def CNN_debug():
             window_correct_train = 0
             window_total_train = 0
             # print('patient: ', number, ' train finished')
-            with torch.no_grad():
-                for i, sample in enumerate(testloader, 0):
-                    labels, data = sample['label'].to(device).to(torch.int64), sample['data'].to(device).float()
+            net.eval()
 
-                    outputs = net(data)
-                    _, predicted = torch.max(outputs.data, 1)
-                    window_total_test += labels.size(0)
-                    # print(window_total_test)
-                    window_correct_test += (predicted == labels).sum().item()
+            for i, sample in enumerate(testloader, 0):
+                labels, data = sample['label'].to(device).to(torch.int64), sample['data'].to(device).float()
 
-                for i, sample in enumerate(trainloader, 0):
-                    labels, data = sample['label'].to(device).to(torch.int64), sample['data'].to(device).float()
+                outputs = net(data)
+                _, predicted = torch.max(outputs.data, 1)
+                window_total_test += labels.size(0)
+                # print(window_total_test)
+                window_correct_test += (predicted == labels).sum().item()
 
-                    outputs = net(data)
-                    _, predicted = torch.max(outputs.data, 1)
-                    window_total_train += labels.size(0)
+            for i, sample in enumerate(trainloader, 0):
+                labels, data = sample['label'].to(device).to(torch.int64), sample['data'].to(device).float()
 
-                    window_correct_train += (predicted == labels).sum().item()
+                outputs = net(data)
+                _, predicted = torch.max(outputs.data, 1)
+                window_total_train += labels.size(0)
+
+                window_correct_train += (predicted == labels).sum().item()
             correct_percentage_test = window_correct_test / window_total_test
             correct_percentage_train = window_correct_train / window_total_train
 
@@ -134,8 +142,8 @@ def CNN_debug():
                 if correct_percentage_test > 0.5:
                     correct += 1
                     correct_person.append(number)
-                # print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f' % (
-                #     number, epoch, correct_percentage_train, correct_percentage_test, running_loss))
+            print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f' % (
+                number, epoch, correct_percentage_train, correct_percentage_test, running_loss))
             train_acc_epoch.append(correct_percentage_train)
             test_acc_epoch.append(correct_percentage_test)
             loss_epoch.append(running_loss)
