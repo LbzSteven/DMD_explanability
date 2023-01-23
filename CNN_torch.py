@@ -119,14 +119,14 @@ class CNN_var(nn.Module):
 
 
 class CNN_Pooling(nn.Module):
-    def __init__(self, window_size=96, N_OF_L=3):
+    def __init__(self, window_size=96, N_OF_L=2):
         super(CNN_Pooling, self).__init__()
         self.window_size = window_size
         self.N_OF_L = N_OF_L
         self.layer1 = nn.Sequential(
             nn.Conv1d(in_channels=3, out_channels=16, kernel_size=3, padding=1, bias=True),
             nn.BatchNorm1d(16),
-            nn.Dropout(0.5),
+            nn.Dropout(0.1),
             nn.LeakyReLU(),
         )
 
@@ -134,7 +134,7 @@ class CNN_Pooling(nn.Module):
             nn.Conv1d(in_channels=16, out_channels=16, kernel_size=3, padding=1, bias=True),
             nn.BatchNorm1d(16),
             nn.LeakyReLU(),
-            nn.Dropout(0.5),
+            nn.Dropout(0.2),
             nn.MaxPool1d(3, 2, padding=1)
         )
 
@@ -144,18 +144,18 @@ class CNN_Pooling(nn.Module):
                                       nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** i), kernel_size=3, padding=1, bias=True))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'BN1'), nn.BatchNorm1d(16 * (2 ** i)))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'Lrelu1'), nn.LeakyReLU())
-            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput1'), nn.Dropout(0.5))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput1'), nn.Dropout(0.2))
 
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'conv2'),
                                       nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** (i + 1)), kernel_size=3, padding=1,  bias=True))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'BN2'), nn.BatchNorm1d(16 * (2 ** (i + 1))))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'Lrelu2'), nn.LeakyReLU())
 
-            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput2'), nn.Dropout(0.5))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput2'), nn.Dropout(0.2))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'pooling'), nn.MaxPool1d(3, 2, padding=1))
 
         self.fc1 = nn.Sequential(
-            nn.Dropout(0.5),
+            nn.Dropout(0.2),
             nn.Linear(8 * self.window_size, 32),
             nn.LeakyReLU())
         self.fc2 = nn.Sequential(
@@ -169,8 +169,9 @@ class CNN_Pooling(nn.Module):
         x = self.layer2(x)
         x = self.layer_mul(x)
         # print(self.layer1.parameters())
+        # print(x.shape)
         x = x.view(-1, 8 * self.window_size)
-
+        # print(x.shape)
         x = self.fc1(x)
         # print(x.shape)
         x = self.fc2(x)
@@ -210,6 +211,7 @@ if __name__ == '__main__':
 
 
     model = CNN_Pooling(96).double()
+    print(model)
     inputs = np.random.randn(16, 3, 96)
     inputs = torch.from_numpy(inputs).double()
     outputs = model(inputs)

@@ -23,7 +23,7 @@ high_sample_rate = ['990023003', '990023008', '990023010', '990023011', '9900230
 
 # WINDOW_SIZE = 33
 # WINDOW_STEP = 33
-LEARN_RATE = 0.0001
+LEARN_RATE = 0.00001
 BATCH_SIZE = 128
 # EPOCH = 100000
 NUM_WORKERS = 0
@@ -47,9 +47,9 @@ def normalize(window_data):
     window_data = np.moveaxis(t, 1, 2)
     return window_data
 def CNN_debug():
-    EPOCH = 30
+    EPOCH = 10
     WINDOW_STEP = 1  # 33
-    WINDOW_SIZE = 48  # 33
+    WINDOW_SIZE = 96  # 33
     correct = 0
     correct_person = []
     total = len(all_group_number)
@@ -57,7 +57,7 @@ def CNN_debug():
 
     window_labels = np.array(window_labels)
     window_data = normalize(window_data)
-
+    # window_data = np.array(window_data)
     print('current: EPOCH %d W_SIZE %d W_STEP %d' % (EPOCH, WINDOW_SIZE, WINDOW_STEP))
 
     for number in all_group_number:
