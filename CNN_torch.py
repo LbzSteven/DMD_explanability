@@ -246,12 +246,8 @@ class one_axis_CNN(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer_mul(x)
-        # print(self.layer1.parameters())
-        # print(x.shape)
         x = x.view(-1, 8 * self.window_size)
-        # print(x.shape)
         x = self.fc1(x)
-        # print(x.shape)
         x = self.fc2(x)
         return x
 
