@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 # import matplotlib.pyplot as plt
 # from scipy.fft import fft, fftfreq
-
+from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, TD_group_number_30, DMD_group_number_30, all_group_number_30
 dir_list = os.listdir("dataset")
 
 # 100Hz
@@ -16,14 +16,6 @@ dir_list = os.listdir("dataset")
 # X: mediolateral
 # Y: anteroposterior
 # Z: vertical
-
-DMD_group_number = ['990012', '990015', '990016', '990023008', '990023010', '990023015']
-TD_group_number = ['990014', '990017', '990018', '990023003', '990023011', '990023014']
-all_group_number = ['990012', '990014', '990015', '990016', '990017', '990018', '990023008', '990023010', '990023015',
-                    '990023003', '990023011', '990023014']
-low_sample_rate = ['990012', '990014', '990015', '990016', '990017', '990018']
-high_sample_rate = ['990023003', '990023008', '990023010', '990023011', '990023014', '990023015']
-
 
 def raw_to_vma(numbers=None):
     if numbers is None:

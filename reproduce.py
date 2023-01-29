@@ -14,30 +14,9 @@ from result_record import csv_writer
 import torch.optim as optim
 import torch.nn.functional as F
 from datetime import datetime
+from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, TD_group_number_30, DMD_group_number_30, all_group_number_30
 
 
-DMD_group_number = ['990012', '990015', '990016', '990023008', '990023010', '990023015']
-TD_group_number = ['990014', '990017', '990018', '990023003', '990023011', '990023014']
-all_group_number = ['990012', '990014', '990015', '990016', '990017', '990018', '990023003', '990023008',
-                    '990023010', '990023011', '990023014', '990023015', ]
-low_sample_rate = ['990012', '990014', '990015', '990016', '990017', '990018']
-high_sample_rate = ['990023003', '990023008', '990023010', '990023011', '990023014', '990023015']
-
-TD_group_number_30 = [
-    '23046', '23003', '23035', '23014', '23031', '23018', '23040', '23033',
-    '23034', '23038', '23036', '23011', '23022', '23039', '23013'
-]
-DMD_group_number_30 = [
-    '23023', '23006', '23026', '230041', '23043', '23030', '23015', '23007',
-    '23041', '23008', '23029', '23010', '23017', '23012', '23028'
-]
-all_group_number_30 = [
-    '23023', '23006', '23026', '230041', '23043', '23030', '23015', '23007',
-    '23041', '23008', '23029', '23010', '23017', '23012', '23028',
-    '23046', '23003', '23035', '23014', '23031', '23018', '23040', '23033',
-    '23034', '23038', '23036', '23011', '23022', '23039', '23013',
-
-]
 
 # WINDOW_SIZE = 33
 # WINDOW_STEP = 33
@@ -47,21 +26,13 @@ BATCH_SIZE = 128
 NUM_WORKERS = 8
 # np.random.seed(1)
 
-
-# 12 fold training and test
-# transforms = transforms.Compose(
-#     [
-#         transforms.ToTensor(),
-#     ]
-# )
-
 def normalize(window_data):
     t = np.moveaxis(window_data, 1, 2)
     max_3_axis = np.max(t.reshape(-1, 3), axis=0)
     min_3_axis = np.min(t.reshape(-1, 3), axis=0)
     for i in range(3):
-        # t[:, :, i] = (t[:, :, i] - min_3_axis[i]) / (max_3_axis[i] - min_3_axis[i])
-        t[:, :, i] = (t[:, :, i] + 3) / (3 + 3)
+        t[:, :, i] = (t[:, :, i] - min_3_axis[i]) / (max_3_axis[i] - min_3_axis[i])
+        # t[:, :, i] = (t[:, :, i] + 3) / (3 + 3)
     window_data = np.moveaxis(t, 1, 2)
     return window_data
 
@@ -125,7 +96,7 @@ def CNN_debug():
 
         # net = CNN_DMD(WINDOW_SIZE).float().to(device)
         # net = CNN_var(WINDOW_SIZE).float().to(device)
-        net = CNN_Pooling(WINDOW_SIZE, N_OF_L=2).float().to(device)
+        net = CNN_Pooling(WINDOW_SIZE, N_OF_Module=2).float().to(device)
         optimizer = optim.Adam(net.parameters())
         loss_function = nn.CrossEntropyLoss()
 

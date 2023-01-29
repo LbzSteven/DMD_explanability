@@ -110,22 +110,20 @@ class CNN_var(nn.Module):
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
-                # init.orthogonal_(m.weight)
                 init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
             if isinstance(m, nn.Linear):
-                # init.orthogonal_(m.weight)
                 init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
 
 
 class CNN_Pooling(nn.Module):
-    def __init__(self, window_size=96, N_OF_L=2):
+    def __init__(self, window_size=96, N_OF_Module=2):
         super(CNN_Pooling, self).__init__()
         self.window_size = window_size
-        self.N_OF_L = N_OF_L
+        self.N_OF_Module = N_OF_Module
         self.layer1 = nn.Sequential(
             nn.Conv1d(in_channels=3, out_channels=16, kernel_size=3, padding=1, bias=True),
             nn.BatchNorm1d(16),
@@ -142,7 +140,82 @@ class CNN_Pooling(nn.Module):
         )
 
         self.layer_mul = nn.Sequential()
-        for i in range(N_OF_L - 1):
+        for i in range(N_OF_Module - 1):
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'conv1'),
+                                      nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** i), kernel_size=3,
+                                                padding=1, bias=True))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'BN1'), nn.BatchNorm1d(16 * (2 ** i)))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'Lrelu1'), nn.LeakyReLU())
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput1'), nn.Dropout(0.3))
+
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'conv2'),
+                                      nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** (i + 1)),
+                                                kernel_size=3, padding=1, bias=True))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'BN2'), nn.BatchNorm1d(16 * (2 ** (i + 1))))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'Lrelu2'), nn.LeakyReLU())
+
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'pooling'), nn.MaxPool1d(3, 2, padding=1))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput2'), nn.Dropout(0.3))
+
+        self.fc1 = nn.Sequential(
+            nn.Linear(8 * self.window_size, 32),
+            nn.LeakyReLU(),
+            nn.Dropout(0.5),
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(32, N_OF_CLASSES),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer_mul(x)
+        # print(self.layer1.parameters())
+        # print(x.shape)
+        x = x.view(-1, 8 * self.window_size)
+        # print(x.shape)
+        x = self.fc1(x)
+        # print(x.shape)
+        x = self.fc2(x)
+        return x
+
+    # def _initialize_weights(self):
+    #     for m in self.modules():
+    #         if isinstance(m, nn.Conv1d):
+    #             init.orthogonal_(m.weight)
+    #
+    #             if m.bias is not None:
+    #                 init.constant_(m.bias, 0)
+    #         if isinstance(m, nn.Linear):
+    #             init.orthogonal_(m.weight)
+    #             # init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+    #             if m.bias is not None:
+    #                 init.constant_(m.bias, 0)
+
+
+class one_axis_CNN(nn.Module):
+    def __init__(self, window_size=96, N_OF_Module=2):
+        super(one_axis_CNN, self).__init__()
+        self.window_size = window_size
+        self.N_OF_Module = N_OF_Module
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=16, kernel_size=3, padding=1, bias=True),
+            nn.BatchNorm1d(16),
+            nn.LeakyReLU(),
+            nn.Dropout(0.3),
+        )
+
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(in_channels=16, out_channels=16, kernel_size=3, padding=1, bias=True),
+            nn.BatchNorm1d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool1d(3, 2, padding=1),
+            nn.Dropout(0.3),
+        )
+
+        self.layer_mul = nn.Sequential()
+        for i in range(N_OF_Module - 1):
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'conv1'),
                                       nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** i), kernel_size=3,
                                                 padding=1, bias=True))
