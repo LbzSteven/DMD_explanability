@@ -1,3 +1,6 @@
+import os
+
+import pandas as pd
 import torch
 import torch.nn as nn
 import numpy as np
@@ -69,26 +72,26 @@ class CNN_var(nn.Module):
             nn.Conv1d(in_channels=3, out_channels=16, kernel_size=3, padding=1, bias=True),
             # nn.BatchNorm1d(16),
             nn.LeakyReLU(),
-
+            nn.Dropout(0.1),
             # nn.MaxPool1d(3, 2)
         )
         self.layer2 = nn.Sequential()
         for i in range(N_OF_L - 1):
-            self.layer2.add_module('{0}-{1}'.format(i + 2, 'dropput'), nn.Dropout(0.1)),
             self.layer2.add_module('{0}-{1}'.format(i + 2, 'conv'),
                                    nn.Conv1d(in_channels=16 * (i + 1), out_channels=16 * (i + 2), kernel_size=3,
                                              padding=1,
                                              bias=True)),
-            # self.layer2.add_module('{0}-{1}'.format(i + 2, 'BN'),nn.BatchNorm1d(16 * (i + 2)))
-            self.layer2.add_module('{0}-{1}'.format(i + 2, 'Lrelu'), nn.LeakyReLU())
-            # self.layer2.add_module('{0}-{1}'.format(i + 2, 'pooling'), nn.MaxPool1d(3, 2))
+            self.layer2.add_module('{0}-{1}'.format(i + 2, 'Lrelu'), nn.LeakyReLU()),
+            self.layer2.add_module('{0}-{1}'.format(i + 2, 'dropput'), nn.Dropout(0.1)),
 
         self.fc1 = nn.Sequential(
-            nn.Dropout(0.2),
+
             nn.Linear(16 * self.N_OF_L * self.window_size, 32),
-            nn.LeakyReLU())
-        self.fc2 = nn.Sequential(
+            nn.LeakyReLU(),
             nn.Dropout(0.5),
+        )
+        self.fc2 = nn.Sequential(
+
             nn.Linear(32, N_OF_CLASSES),
             nn.Softmax(dim=1)
         )
@@ -107,13 +110,13 @@ class CNN_var(nn.Module):
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
-                init.orthogonal_(m.weight)
-
+                # init.orthogonal_(m.weight)
+                init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
             if isinstance(m, nn.Linear):
-                init.orthogonal_(m.weight)
-                # init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                # init.orthogonal_(m.weight)
+                init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
 
@@ -126,40 +129,42 @@ class CNN_Pooling(nn.Module):
         self.layer1 = nn.Sequential(
             nn.Conv1d(in_channels=3, out_channels=16, kernel_size=3, padding=1, bias=True),
             nn.BatchNorm1d(16),
-            nn.Dropout(0.1),
             nn.LeakyReLU(),
+            nn.Dropout(0.3),
         )
 
         self.layer2 = nn.Sequential(
             nn.Conv1d(in_channels=16, out_channels=16, kernel_size=3, padding=1, bias=True),
             nn.BatchNorm1d(16),
             nn.LeakyReLU(),
-            nn.Dropout(0.2),
-            nn.MaxPool1d(3, 2, padding=1)
+            nn.MaxPool1d(3, 2, padding=1),
+            nn.Dropout(0.3),
         )
 
         self.layer_mul = nn.Sequential()
         for i in range(N_OF_L - 1):
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'conv1'),
-                                      nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** i), kernel_size=3, padding=1, bias=True))
+                                      nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** i), kernel_size=3,
+                                                padding=1, bias=True))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'BN1'), nn.BatchNorm1d(16 * (2 ** i)))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'Lrelu1'), nn.LeakyReLU())
-            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput1'), nn.Dropout(0.2))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput1'), nn.Dropout(0.3))
 
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'conv2'),
-                                      nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** (i + 1)), kernel_size=3, padding=1,  bias=True))
+                                      nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** (i + 1)),
+                                                kernel_size=3, padding=1, bias=True))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'BN2'), nn.BatchNorm1d(16 * (2 ** (i + 1))))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'Lrelu2'), nn.LeakyReLU())
 
-            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput2'), nn.Dropout(0.2))
             self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'pooling'), nn.MaxPool1d(3, 2, padding=1))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput2'), nn.Dropout(0.3))
 
         self.fc1 = nn.Sequential(
-            nn.Dropout(0.2),
             nn.Linear(8 * self.window_size, 32),
-            nn.LeakyReLU())
-        self.fc2 = nn.Sequential(
+            nn.LeakyReLU(),
             nn.Dropout(0.5),
+        )
+        self.fc2 = nn.Sequential(
             nn.Linear(32, N_OF_CLASSES),
             nn.Softmax(dim=1)
         )
@@ -208,12 +213,24 @@ if __name__ == '__main__':
     # outputs = model(inputs)
     # print(outputs.shape)
     # print(outputs)
+    csv_data = pd.read_csv(os.path.join('dataset/downsample/990012.csv'))
+    window_step = 1
+    window_size = 48
+    inputs = []
+    for s in range(0, 16, window_step):
 
+        window = csv_data.iloc[s:s + window_size, 1:]
+        data = np.array(window)
 
-    model = CNN_Pooling(96).double()
+        if data.shape[0] == window_size:
+            data = np.moveaxis(data, 0, -1)
+            inputs.append(data)
+    model = CNN_Pooling(48).double()
+    model.eval()
     print(model)
-    inputs = np.random.randn(16, 3, 96)
+    inputs = np.array(inputs)
+    # inputs = np.random.randn(16, 3, 48)
     inputs = torch.from_numpy(inputs).double()
     outputs = model(inputs)
-    print(outputs.shape)
+    print(outputs)
     # print(outputs)

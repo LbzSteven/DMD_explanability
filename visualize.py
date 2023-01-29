@@ -7,6 +7,21 @@ from scipy.fft import fft, fftfreq
 from statsmodels.tsa.stattools import acf
 import seaborn as sns
 
+TD_group_number_30 = [
+    '23046', '23003', '23035', '23014', '23031', '23018', '23040', '23033',
+    '23034', '23038', '23036', '23011', '23022', '23039', '23013'
+]
+DMD_group_number_30 = [
+    '23023', '23006', '23026', '230041', '23043', '23030', '23015', '23007',
+    '23041', '23008', '23029', '23010', '23017', '23012', '23028'
+]
+all_group_number_30 = [
+    '23046', '23003', '23035', '23014', '23031', '23018', '23040', '23033',
+    '23034', '23038', '23036', '23011', '23022', '23039', '23013',
+    '23023', '23006', '23026', '230041', '23043', '23030', '23015', '23007',
+    '23041', '23008', '23029', '23010', '23017', '23012', '23028'
+]
+
 dir_list = os.listdir("dataset")
 # print(len(dir_list))
 # print(dir_list)
@@ -244,13 +259,14 @@ def visualize_one_person(sample_number=None, labels=None):
             plt.savefig(os.path.join('./visualize/raw_data', label + '_' + str(sample_number)) + ' Control')
 
 
-def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', top_number_K_frequency=5):
+def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', save_dir='./visualize/FFT',
+        top_number_K_frequency=5):
     # if False:
     if label in high_sample_rate:
-        file_dir = os.path.join('./visualize/FFT/downsample', label)
+        file_dir = os.path.join(save_dir, label)
 
     else:
-        file_dir = os.path.join('./visualize/FFT', label)
+        file_dir = os.path.join(save_dir, label)
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     txt_dir = os.path.join(file_dir, label + '_' + axis_marker + '_FFT_result.txt')
@@ -329,11 +345,11 @@ def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', to
     # print(f"lag: {top_k_idxs[acf_scores.index(max(acf_scores))]} has highest fft acf: {max(acf_scores)}")
 
 
-def frequency_by_FFT(labels=None):
+def frequency_by_FFT(labels=None, read_dir="dataset", save_dir='./visualize/FFT'):
     if labels is None:
         labels = ['990012']
     for label in labels:
-        csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
+        csv_data = pd.read_csv(os.path.join(read_dir, label + '.csv'))
         np_data = np.array(csv_data)
         ts = np.array(np_data[:, 0])
         x = np.array(np_data[:, 1])
@@ -367,14 +383,14 @@ def frequency_by_FFT(labels=None):
         #     2 * np.sin(2 * np.pi * 400 * samples) + \
         #     3 * np.sin(2 * np.pi * 600 * samples)
         # FFT(y, 1400, 1 / 600, 'test', 'test')
-        # FFT(vertical, sample_number, sample_spacing, label, 'vertical')
-        # FFT(mediolateral, sample_number, sample_spacing, label, 'mediolateral')
-        # FFT(anteroposterior, sample_number, sample_spacing, label, 'anteroposterior')
+        # FFT(vertical, sample_number, sample_spacing, label, axis_marker='vertical', save_dir=save_dir)
+        # FFT(mediolateral, sample_number, sample_spacing, label, axis_marker='mediolateral', save_dir=save_dir)
+        # FFT(anteroposterior, sample_number, sample_spacing, label,  axis_marker='anteroposterior', save_dir=save_dir)
         # if False:
         if label in high_sample_rate:
-            file_dir = os.path.join('./visualize/FFT/downsample', label)
+            file_dir = os.path.join(save_dir, 'downsample', label)
         else:
-            file_dir = os.path.join('./visualize/FFT/', label)
+            file_dir = os.path.join(save_dir, label)
         FFT_vertical = np.loadtxt(os.path.join(file_dir, label + '_vertical_FFT_result.txt'), delimiter=',').view(
             complex).reshape(
             -1)[:ts.shape[0] // 2]
@@ -397,7 +413,9 @@ def frequency_by_FFT(labels=None):
         ax.set_title('Compare all axis in ' + label)
         ax.legend()
         # plt.savefig(os.path.join(file_dir,'all_axis_magnitude'))
-        plt.savefig(os.path.join('visualize/FFT/all_axis_magnitude', label))
+        if not os.path.exists(os.path.join(save_dir, 'all_axis_magnitude')):
+            os.makedirs(os.path.join(save_dir, 'all_axis_magnitude'))
+        plt.savefig(os.path.join(save_dir, 'all_axis_magnitude', label))
 
 
 def compare_frequency(labels=None):
@@ -510,7 +528,6 @@ def pearson(labels=None):
 def visualize_vma(sample_number=100, position='truncate'):
     for label in all_group_number:
 
-
         csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
         np_data = np.array(csv_data)
 
@@ -571,5 +588,7 @@ def visualize_vma(sample_number=100, position='truncate'):
         plt.savefig(os.path.join('./visualize/vma', label))
 
 
-visualize_vma()
+# visualize_vma()
 # time_intervals_checking()
+frequency_by_FFT(labels=all_group_number_30, read_dir='dataset/30_dmd_data_set/Speed-Calibration-L3',
+                 save_dir='visualize/FFT/30_people')
