@@ -265,6 +265,63 @@ class one_axis_CNN(nn.Module):
     #                 init.constant_(m.bias, 0)
 
 
+class CNN_for_window_FFT(nn.Module):
+    def __init__(self, window_size=96, N_OF_Module=2):
+        super(CNN_for_window_FFT, self).__init__()
+        self.window_size = window_size
+        self.N_OF_Module = N_OF_Module
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(in_channels=6, out_channels=16, kernel_size=3, padding=1, bias=True),
+            nn.BatchNorm1d(16),
+            nn.LeakyReLU(),
+            nn.Dropout(0.3),
+        )
+
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(in_channels=16, out_channels=16, kernel_size=3, padding=1, bias=True),
+            nn.BatchNorm1d(16),
+            nn.LeakyReLU(),
+            nn.MaxPool1d(3, 2, padding=1),
+            nn.Dropout(0.3),
+        )
+
+        self.layer_mul = nn.Sequential()
+        for i in range(N_OF_Module - 1):
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'conv1'),
+                                      nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** i), kernel_size=3,
+                                                padding=1, bias=True))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'BN1'), nn.BatchNorm1d(16 * (2 ** i)))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'Lrelu1'), nn.LeakyReLU())
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput1'), nn.Dropout(0.3))
+
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'conv2'),
+                                      nn.Conv1d(in_channels=16 * (2 ** i), out_channels=16 * (2 ** (i + 1)),
+                                                kernel_size=3, padding=1, bias=True))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'BN2'), nn.BatchNorm1d(16 * (2 ** (i + 1))))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'Lrelu2'), nn.LeakyReLU())
+
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'pooling'), nn.MaxPool1d(3, 2, padding=1))
+            self.layer_mul.add_module('{0}-{1}'.format(i + 2, 'dropput2'), nn.Dropout(0.3))
+
+        self.fc1 = nn.Sequential(
+            nn.Linear(4 * self.window_size, 32),
+            nn.LeakyReLU(),
+            nn.Dropout(0.5),
+        )
+        self.fc2 = nn.Sequential(
+            nn.Linear(32, N_OF_CLASSES),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer_mul(x)
+        x = x.view(-1, 4 * self.window_size)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        return x
+
 if __name__ == '__main__':
     # CNN = CNN_DMD(10).double()
     # # print(CNN)
@@ -294,11 +351,11 @@ if __name__ == '__main__':
         if data.shape[0] == window_size:
             data = np.moveaxis(data, 0, -1)
             inputs.append(data)
-    model = CNN_Pooling(48).double()
+    model = CNN_for_window_FFT(48).double()
     model.eval()
     print(model)
-    inputs = np.array(inputs)
-    # inputs = np.random.randn(16, 3, 48)
+    # inputs = np.array(inputs)
+    inputs = np.random.randn(16, 6, 48)
     inputs = torch.from_numpy(inputs).double()
     outputs = model(inputs)
     print(outputs)

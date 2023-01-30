@@ -3,13 +3,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
-# import scipy.fftpack
-# from scipy.fftpack import fft, fftfreq
-from scipy.fft import fft, fftfreq
+import scipy.fftpack
+from scipy.fftpack import fft, fftfreq
+# from scipy.fft import fft, fftfreq
 # from statsmodels.tsa.stattools import acf
 import seaborn as sns
 
-from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, TD_group_number_30, DMD_group_number_30, all_group_number_30
+from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
+    TD_group_number_30, DMD_group_number_30, all_group_number_30
 
 dir_list = os.listdir("dataset")
 # print(len(dir_list))
@@ -372,9 +373,9 @@ def frequency_by_FFT(labels=None, read_dir="dataset", save_dir='./visualize/FFT'
         #     2 * np.sin(2 * np.pi * 400 * samples) + \
         #     3 * np.sin(2 * np.pi * 600 * samples)
         # FFT(y, 1400, 1 / 600, 'test', 'test')
-        # FFT(vertical, sample_number, sample_spacing, label, axis_marker='vertical', save_dir=save_dir)
-        # FFT(mediolateral, sample_number, sample_spacing, label, axis_marker='mediolateral', save_dir=save_dir)
-        # FFT(anteroposterior, sample_number, sample_spacing, label,  axis_marker='anteroposterior', save_dir=save_dir)
+        FFT(vertical, sample_number, sample_spacing, label, axis_marker='vertical', save_dir=save_dir)
+        FFT(mediolateral, sample_number, sample_spacing, label, axis_marker='mediolateral', save_dir=save_dir)
+        FFT(anteroposterior, sample_number, sample_spacing, label, axis_marker='anteroposterior', save_dir=save_dir)
         # if False:
         if label in high_sample_rate:
             file_dir = os.path.join(save_dir, 'downsample', label)
@@ -514,10 +515,10 @@ def pearson(labels=None):
         sns.heatmap(overall_pearson_r, cmap="Greens", annot=True)
 
 
-def visualize_vma(sample_number=100, position='truncate'):
+def visualize_vma(sample_number=100, position=None):
     for label in all_group_number:
-
-        csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
+        # csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
+        csv_data = pd.read_csv(os.path.join("dataset/ZeroHighFreq/12people_freq_7.5", label + '.csv'))
         np_data = np.array(csv_data)
 
         if position is None:
@@ -525,7 +526,8 @@ def visualize_vma(sample_number=100, position='truncate'):
             vertical = np.array(np_data[:, 1])
             mediolateral = np.array(np_data[:, 2])
             anteroposterior = np.array(np_data[:, 3])
-        if position == 'truncate':
+
+        elif position == 'truncate':
             csv_data = pd.read_csv(os.path.join("dataset/truncate", label + '.csv'))
             np_data = np.array(csv_data)
             ts = np.array(np_data[:, 0])
@@ -574,10 +576,14 @@ def visualize_vma(sample_number=100, position='truncate'):
         ax.set_xlabel("record: " + label)
         ax.set_ylabel("sensor data")
         ax.legend()
-        plt.savefig(os.path.join('./visualize/vma', label))
+        # plt.savefig(os.path.join('./visualize/vma', label))
+        save_path = './visualize/zeroHighFreq'
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        plt.savefig(os.path.join(save_path, label))
 
 
-# visualize_vma()
+visualize_vma(position=None)
 # time_intervals_checking()
-frequency_by_FFT(labels=all_group_number_30, read_dir='dataset/30_dmd_data_set/Speed-Calibration-L3',
-                 save_dir='visualize/FFT/30_people')
+# frequency_by_FFT(labels=all_group_number_30, read_dir='dataset/30_dmd_data_set/Speed-Calibration-L3',
+#                  save_dir='visualize/FFT/30_people')
