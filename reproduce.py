@@ -13,14 +13,16 @@ from DMDdataset import DMDDataset
 from result_record import csv_writer
 # import torchvision.transforms as transforms
 import torch.optim as optim
+from torch.optim.lr_scheduler import StepLR
 import torch.nn.functional as F
 from datetime import datetime
 from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
     TD_group_number_30, DMD_group_number_30, all_group_number_30
+import pandas as pd
 
 # WINDOW_SIZE = 33
 # WINDOW_STEP = 33
-LEARN_RATE = 0.0001
+LEARN_RATE = 1e-3
 BATCH_SIZE = 128
 # EPOCH = 100000
 NUM_WORKERS = 8
@@ -96,8 +98,12 @@ def get_one_axis(window_data, axis='v'):
     return window_data
 
 
-def CNN_debug(epochs=10, window_step=5, window_size=80, dataset=all_group_number, model_save=False,
-              TRAIN_JUST_ONE=False, GET_OUTPUT_PROB=False, SAVE_IMAGE=False):
+bad_sample = ['23023', '23006', '23026', '23043', '23030', '23015', '23010', '23014']
+
+
+def CNN_debug(epochs=20, window_step=5, window_size=80, dataset=all_group_number_30, model_save=False,
+              TRAIN_JUST_ONE=False, GET_OUTPUT_PROB=False, SAVE_IMAGE=True, BAD_SAMPLE_INVESTIGATE=False,
+              BAD_SAMPLE_KICKOUT=False, ZERO_OUT=True, zero_out_freq=10):
     # init
     currentDateAndTime = datetime.now()
     currentTime = currentDateAndTime.strftime("%m_%d_%H_%M_%S")
@@ -114,11 +120,13 @@ def CNN_debug(epochs=10, window_step=5, window_size=80, dataset=all_group_number
         WINDOW_SIZE = 80
     correct_person_count = 0
     correct_person_list = []
-
+    wrong_person_list = []
     # making dataset
     total_person_count = len(dataset)
     if dataset == all_group_number_30:
-        patient_makers, window_labels, window_data = window_oper(dataset, WINDOW_SIZE, WINDOW_STEP, dataset='30')
+        # patient_makers, window_labels, window_data = window_oper(dataset, WINDOW_SIZE, WINDOW_STEP, dataset='30')
+        patient_makers, window_labels, window_data = window_oper(dataset, WINDOW_SIZE, WINDOW_STEP, dataset='30',
+                                                                 zero_out=ZERO_OUT, zero_out_freq=zero_out_freq)
     elif dataset == all_group_number:
         # patient_makers, window_labels, window_data = window_oper_HS_3windows(dataset, WINDOW_SIZE, WINDOW_STEP,
         # dataset='12')
@@ -126,25 +134,29 @@ def CNN_debug(epochs=10, window_step=5, window_size=80, dataset=all_group_number
         #                                                          zero_out=True, zero_out_freq=10)
         # patient_makers, window_labels, window_data = window_FFT_oper(dataset, WINDOW_SIZE, WINDOW_STEP, dataset='12')
         patient_makers, window_labels, window_data = window_oper(dataset, WINDOW_SIZE, WINDOW_STEP, dataset='12',
-                                                                 zero_out=False, zero_out_freq=10)
+                                                                 zero_out=ZERO_OUT, zero_out_freq=zero_out_freq)
     else:
         raise Exception('wrong dataset')
     window_labels = np.array(window_labels)
     window_data = np.array(window_data)
 
     # get one axis
-    window_data = get_one_axis(window_data, axis='a')
+    # window_data = get_one_axis(window_data, axis='a')
     print('current: EPOCH %d W_SIZE %d W_STEP %d' % (EPOCH, WINDOW_SIZE, WINDOW_STEP))
 
     if TRAIN_JUST_ONE:
         # dataset = [dataset[0]]
 
         dataset = ['990023015']
+
+    if BAD_SAMPLE_INVESTIGATE:
+        dataset = bad_sample
     for fold_i, number in enumerate(dataset):
         # divide window for train and test
         testing_idx = [i for i, x in enumerate(patient_makers) if x == number]
         training_idx = [i for i, x in enumerate(patient_makers) if x != number]
-
+        if BAD_SAMPLE_KICKOUT:
+            training_idx = [i for i in training_idx if i not in bad_sample]
         testing_labels = window_labels[testing_idx]
         testing_data = window_data[testing_idx, :]
         training_labels = window_labels[training_idx]
@@ -167,10 +179,11 @@ def CNN_debug(epochs=10, window_step=5, window_size=80, dataset=all_group_number
 
         # net = CNN_DMD(WINDOW_SIZE).float().to(device)
         # net = CNN_var(WINDOW_SIZE).float().to(device)
-        # net = CNN_Pooling(WINDOW_SIZE, N_OF_Module=2).float().to(device)
-        net = one_axis_CNN(WINDOW_SIZE, N_OF_Module=2).float().to(device)
+        net = CNN_Pooling(WINDOW_SIZE, N_OF_Module=2).float().to(device)
+        # net = one_axis_CNN(WINDOW_SIZE, N_OF_Module=2).float().to(device)
         # net = CNN_for_window_FFT(WINDOW_SIZE, N_OF_Module=2).float().to(device)
-        optimizer = optim.Adam(net.parameters())
+        optimizer = optim.Adam(net.parameters(), lr=LEARN_RATE)
+        scheduler = StepLR(optimizer, step_size=10, gamma=0.2)
         loss_function = nn.CrossEntropyLoss()
 
         # acc epoch init and acc before training
@@ -182,8 +195,8 @@ def CNN_debug(epochs=10, window_step=5, window_size=80, dataset=all_group_number
                                                                                       device=device,
                                                                                       GET_OUTPUT_PROB=GET_OUTPUT_PROB)
 
-        print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f' % (
-            number, 0, correct_percentage_train, correct_percentage_test, 0))
+        print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f lr for next epoch %f' % (
+            number, 0, correct_percentage_train, correct_percentage_test, 0, scheduler.get_last_lr()[0]))
         train_acc_epoch.append(correct_percentage_train)
         test_acc_epoch.append(correct_percentage_test)
         loss_epoch.append(0)
@@ -208,6 +221,9 @@ def CNN_debug(epochs=10, window_step=5, window_size=80, dataset=all_group_number
                                                                                           testLoader=testloader,
                                                                                           device=device,
                                                                                           GET_OUTPUT_PROB=GET_OUTPUT_PROB)
+            # StepLR step
+            scheduler.step()
+
             if GET_OUTPUT_PROB:
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
@@ -217,12 +233,15 @@ def CNN_debug(epochs=10, window_step=5, window_size=80, dataset=all_group_number
                 plt.scatter(range(output_values.shape[0]), output_values[:, 1], linestyle='solid', label='DMD')
                 plt.legend()
                 plt.savefig(os.path.join(save_dir, number + '_' + str(epochs + 1)))
-            print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f' % (
-                number, epochs + 1, correct_percentage_train, correct_percentage_test, running_loss))
+            print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f, lr for next epoch %f' % (
+                number, epochs + 1, correct_percentage_train, correct_percentage_test, running_loss,
+                scheduler.get_last_lr()[0]))
             if epochs == EPOCH - 1:
                 if correct_percentage_test > 0.5:
                     correct_person_count += 1
                     correct_person_list.append(number)
+                else:
+                    wrong_person_list.append(number)
                 print('Current acc (%d / %d) ' % (correct_person_count, fold_i + 1))
 
             train_acc_epoch.append(correct_percentage_train)
@@ -257,9 +276,39 @@ def CNN_debug(epochs=10, window_step=5, window_size=80, dataset=all_group_number
             plt.savefig(os.path.join(save_dir, number))
     print('images in %s' % save_dir)
     print('total_person_count acc: %.3f' % (correct_person_count / total_person_count))
-    print(correct_person_list)
+    # print('correct person list:', correct_person_list)
+    print('wrong person list:', wrong_person_list)
+    return (correct_person_count / total_person_count), wrong_person_list
 
 
+def multiple_running(repeat_time=10, save_dir='./save_result'):
+    acc_s = []
+    wrong_lists = []
+    print('multiple_running for ' + str(repeat_time))
+    for i in range(repeat_time):
+        acc, wrong_list = CNN_debug(epochs=20, window_step=5, window_size=80, dataset=all_group_number_30, model_save=False,
+              TRAIN_JUST_ONE=False, GET_OUTPUT_PROB=False, SAVE_IMAGE=True, BAD_SAMPLE_INVESTIGATE=False,
+              BAD_SAMPLE_KICKOUT=False, ZERO_OUT=False, zero_out_freq=10)
+
+        acc_s.append(acc)
+        wrong_lists += wrong_list
+
+    avg_acc = np.mean(np.array(acc_s))
+    max_acc = np.max(np.array(acc_s))
+    min_acc = np.min(np.array(acc_s))
+    variance = np.var(np.array(acc_s))
+    wrong_count = pd.value_counts(wrong_lists)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    currentTime = datetime.now().strftime("%m_%d_%H_%M_%S")
+    dataframe = pd.DataFrame({'avg_acc': [avg_acc], 'max_acc': [max_acc], 'min_acc': [min_acc], 'variance': [variance]})
+    dataframe.to_csv(os.path.join(save_dir, currentTime + 'acc.csv'), index=True, sep=',')
+    dataframe = pd.DataFrame([wrong_count])
+    dataframe.to_csv(os.path.join(save_dir, currentTime + 'wrong_list.csv'), index=True, sep=',')
+
+
+multiple_running()
+exit()
 CNN_debug()
 
 # j = 0

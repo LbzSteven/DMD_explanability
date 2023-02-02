@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft, fftfreq, ifft
 from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
-    TD_group_number_30, DMD_group_number_30, all_group_number_30
+    TD_group_number_30, DMD_group_number_30, all_group_number_30,bad_sample_30
 
 dir_list = os.listdir("dataset")
 
@@ -118,7 +118,7 @@ def FFT_freq_plot(magnitude, magnitude_zero_out, input_vector, inverse_vector, o
                   label='990012'):
     plt.figure(figsize=(24, 15))
     ax = plt.subplot(511)
-    ax.plot(freq_half, magnitude)
+    ax.plot(freq_half, magnitude, label='FFT magnitude')
     ax.set_xlabel('freq')
     ax.set_ylabel('magnitude')
     ax.set_title('FFT freq ' + label)
@@ -126,7 +126,7 @@ def FFT_freq_plot(magnitude, magnitude_zero_out, input_vector, inverse_vector, o
     ax.legend()
 
     ax = plt.subplot(512)
-    ax.plot(freq_half, magnitude_zero_out)
+    ax.plot(freq_half, magnitude_zero_out, label='FFT magnitude zero out')
     ax.set_xlabel('freq')
     ax.set_ylabel('magnitude')
     ax.set_title('FFT freq zero out of' + label)
@@ -134,7 +134,7 @@ def FFT_freq_plot(magnitude, magnitude_zero_out, input_vector, inverse_vector, o
     ax.legend()
     #
     ax = plt.subplot(513)
-    ax.plot(range(input_vector.shape[0]), input_vector)
+    ax.plot(range(input_vector.shape[0]), input_vector, label='original signal')
     ax.set_xlabel('time')
     ax.set_ylabel('accelerator')
     ax.set_title('original signal ' + label)
@@ -142,7 +142,7 @@ def FFT_freq_plot(magnitude, magnitude_zero_out, input_vector, inverse_vector, o
     ax.legend()
     #
     ax = plt.subplot(514)
-    ax.plot(range(inverse_vector.shape[0]), inverse_vector)
+    ax.plot(range(inverse_vector.shape[0]), inverse_vector, label='inverse signal')
     ax.set_xlabel('time')
     ax.set_ylabel('accelerator')
     ax.set_title('inversed signal ' + label)
@@ -150,7 +150,7 @@ def FFT_freq_plot(magnitude, magnitude_zero_out, input_vector, inverse_vector, o
     ax.legend()
     #
     ax = plt.subplot(515)
-    ax.plot(range(output_vector.shape[0]), output_vector)
+    ax.plot(range(output_vector.shape[0]), output_vector, label='zero out inverse signal')
     ax.set_xlabel('accelerator')
     ax.set_ylabel('time')
     ax.set_title('inversed zero-out signal ' + label)
@@ -159,20 +159,22 @@ def FFT_freq_plot(magnitude, magnitude_zero_out, input_vector, inverse_vector, o
     plt.show()
 
 
-def Downsample_FFT_ZeroHighFreq_Inverse(group_number=all_group_number, zero_out_freq_limit=10):
+def Downsample_FFT_ZeroHighFreq_Inverse(group_number=all_group_number_30, zero_out_freq_limit=6):
     if group_number == all_group_number:
         path = "dataset/downsample"
         save_path = os.path.join('dataset/ZeroHighFreq/', '12people_freq_'+str(zero_out_freq_limit))
+        time_interval = 0.03
     elif group_number == all_group_number_30:
         path = "dataset/30_dmd_data_set/Speed-Calibration-L3"
         save_path = os.path.join('dataset/ZeroHighFreq/', '30people_freq_'+str(zero_out_freq_limit))
+        time_interval = 0.01
     else:
         raise Exception('wrong dataset input')
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     # for number in group_number:
-    for number in ['990012']:
+    for number in ['23015']:
         csv_data = pd.read_csv(os.path.join(path, number + '.csv'))
         np_data = np.array(csv_data)
         ts = np.array(np_data[:, 0])
@@ -180,17 +182,17 @@ def Downsample_FFT_ZeroHighFreq_Inverse(group_number=all_group_number, zero_out_
         mediolateral = np.array(np_data[:, 2])
         anteroposterior = np.array(np_data[:, 3])
 
-        vertical = FFT_ZeroHighFreq_Inverse(vertical)
-        # mediolateral = FFT_ZeroHighFreq_Inverse(mediolateral)
-        # anteroposterior = FFT_ZeroHighFreq_Inverse(anteroposterior)
+        vertical = FFT_ZeroHighFreq_Inverse(vertical, time_interval)
+        # mediolateral = FFT_ZeroHighFreq_Inverse(mediolateral, time_interval)
+        # anteroposterior = FFT_ZeroHighFreq_Inverse(anteroposterior, time_interval)
         #
         # dataframe = pd.DataFrame({'ts': ts, 'v': vertical, 'm': mediolateral, 'a': anteroposterior})
         # dataframe.to_csv(os.path.join(save_path, number + '.csv'), index=False, sep=',')
 
 
-def FFT_ZeroHighFreq_Inverse(input_vector, zero_out_freq_limit=10):
+def FFT_ZeroHighFreq_Inverse(input_vector, time_interval=0.01,zero_out_freq_limit=10):
     # FFT
-    time_interval = 0.03  # 0.01
+    time_interval = time_interval  # 0.01
     sample_frequent = 1 / time_interval  # 33
     fft_result = fft(input_vector)
     magnitude = np.abs(fft_result[0:input_vector.shape[0] // 2])
@@ -204,8 +206,9 @@ def FFT_ZeroHighFreq_Inverse(input_vector, zero_out_freq_limit=10):
     output_vector = np.where(((freq < zero_out_freq_limit) & (-zero_out_freq_limit < freq)), fft_result, 0)
 
     # inverse
-    output_vector = ifft(output_vector).real
     magnitude_zero_out = np.abs(output_vector[0:input_vector.shape[0] // 2])
+    output_vector = ifft(output_vector).real
+
     # sanity check
     FFT_freq_plot(magnitude, magnitude_zero_out, input_vector, inverse_vector, output_vector, freq_half, 'X')
     return output_vector

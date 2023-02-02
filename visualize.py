@@ -10,7 +10,7 @@ from scipy.fftpack import fft, fftfreq
 import seaborn as sns
 
 from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
-    TD_group_number_30, DMD_group_number_30, all_group_number_30
+    TD_group_number_30, DMD_group_number_30, all_group_number_30,bad_sample_30
 
 dir_list = os.listdir("dataset")
 # print(len(dir_list))
@@ -516,9 +516,10 @@ def pearson(labels=None):
 
 
 def visualize_vma(sample_number=100, position=None):
-    for label in all_group_number:
+    for label in bad_sample_30:
         # csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
-        csv_data = pd.read_csv(os.path.join("dataset/ZeroHighFreq/12people_freq_7.5", label + '.csv'))
+        # csv_data = pd.read_csv(os.path.join("dataset/ZeroHighFreq/12people_freq_7.5", label + '.csv'))
+        csv_data = pd.read_csv(os.path.join("dataset/30_dmd_data_set/Speed-Calibration-L3", label + '.csv'))
         np_data = np.array(csv_data)
 
         if position is None:
@@ -577,13 +578,13 @@ def visualize_vma(sample_number=100, position=None):
         ax.set_ylabel("sensor data")
         ax.legend()
         # plt.savefig(os.path.join('./visualize/vma', label))
-        save_path = './visualize/zeroHighFreq'
+        save_path = './visualize/30_people_vma'
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         plt.savefig(os.path.join(save_path, label))
 
 
-visualize_vma(position=None)
+# visualize_vma(position=None)
 # time_intervals_checking()
-# frequency_by_FFT(labels=all_group_number_30, read_dir='dataset/30_dmd_data_set/Speed-Calibration-L3',
-#                  save_dir='visualize/FFT/30_people')
+frequency_by_FFT(labels=bad_sample_30, read_dir='dataset/30_dmd_data_set/Speed-Calibration-L3',
+                 save_dir='visualize/bad_sample_30/FFT')
