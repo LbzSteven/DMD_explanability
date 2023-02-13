@@ -3,19 +3,21 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 import math
+import torch
 
 
 class DMDDataset(Dataset):
 
-    def __init__(self, labels, data, transform=None, dimension=2):
+    def __init__(self, labels, data, transform=None, dimension=2, device='cuda:0'):
 
-        self.labels = labels
+        self.labels = torch.from_numpy(labels)
         if dimension == 2:
-            self.data = data[:, np.newaxis, :, :]
+            self.data = torch.from_numpy(data[:, np.newaxis, :, :])
         else:
-            self.data = data[:, :, :]
+            self.data = torch.from_numpy(data[:, :, :])
         self.transform = transform
-
+        # self.labels.to(device).to(torch.int64)
+        # self.data.to(device).float()
         # self.max, self.min = self.get_min_max(data)
         # X: vertical
         # Y: mediolateral

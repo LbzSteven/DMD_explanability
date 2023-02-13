@@ -22,3 +22,19 @@ all_group_number_30 = [
 ]
 
 bad_sample_30 = ['23015', '23023', '23043', '23026', '23014', '23006', '23028', '23010']
+
+# PATH
+
+L3_path_12 = './dataset'
+
+six_min_path_30 = r'./dataset/30_dmd_data_set/6-min-walk'
+hundred_meter_path_26 = r'dataset/30_dmd_data_set/100-meter-walk'
+
+L1_path_30 = r'./dataset/30_dmd_data_set/Speed-Calibration-L1'
+L2_path_30 = r'./dataset/30_dmd_data_set/Speed-Calibration-L2'
+L3_path_30 = r'./dataset/30_dmd_data_set/Speed-Calibration-L3'
+L4_path_30 = r'./dataset/30_dmd_data_set/Speed-Calibration-L4'
+L5_path_30 = r'./dataset/30_dmd_data_set/Speed-Calibration-L5'
+
+#exclude_list
+exclude_list_100m = ['23015', '23043']

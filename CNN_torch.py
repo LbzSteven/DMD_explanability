@@ -16,22 +16,26 @@ class CNN_DMD(nn.Module):
         self.F_NODE = F_NODE
         self.window_size = window_size
         self.layer1 = nn.Sequential(nn.Conv2d(1, F_NODE, Ka, bias=True),
-                                    nn.ReLU())
+                                    nn.ReLU(),
+                                    nn.Dropout(0.1))
         self.layer2 = nn.Sequential()
         for i in range(2, N_OF_L + 2):
-            self.layer2.add_module('{0}-{1}'.format(i, 'dropput'), nn.Dropout(0.1))
-            # self.layer2.add_module('{0}-{1}'.format(i, 'dropput'), nn.Dropout(0.5))
+
             self.layer2.add_module('{0}-{1}'.format(i, 'conv'), nn.Conv2d(F_NODE * (i - 1), F_NODE * i, Kb))
             self.layer2.add_module('{0}-{1}'.format(i, 'relu'), nn.ReLU())
+            self.layer2.add_module('{0}-{1}'.format(i, 'dropput'), nn.Dropout(0.2))
+
 
         self.fc1 = nn.Sequential(
-            nn.Dropout(0.2),
-            # nn.Dropout(0.5),
+            # nn.Dropout(0.2),
+
             nn.Linear((N_OF_L + 1) * F_NODE * (window_size - N_OF_L - 1), 2 + 2 * F_NODE),
             # nn.Linear((N_OF_L + 1) * F_NODE * (window_size - N_OF_L - 1), 100),
-            nn.ReLU())
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        )
         self.fc2 = nn.Sequential(
-            nn.Dropout(0.5),
+
             nn.Linear(2 + 2 * F_NODE, N_OF_CLASSES),
             # nn.Linear(100, N_OF_CLASSES),
             nn.Softmax(dim=1)

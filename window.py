@@ -4,32 +4,33 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft, fftfreq
 from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
-    TD_group_number_30, DMD_group_number_30, all_group_number_30
+    TD_group_number_30, DMD_group_number_30, all_group_number_30, L3_path_30
 
 
-def window_oper(numbers=None, window_size=33, window_step=33, dataset='30', zero_out=False, zero_out_freq=7.5):
+def window_oper(people_number_list=None, window_size=33, window_step=33, people_number='30', dataset_path=L3_path_30,
+                ):
     paitent_makers = []
     labels = []
     datas = []
-    if dataset == '12':
-        data_path = "dataset/downsample"
-        DMD = DMD_group_number
-        numbers = all_group_number
-    elif dataset == '30':
-        data_path = "dataset/30_dmd_data_set/Speed-Calibration-L3"
-        DMD = DMD_group_number_30
-        numbers = all_group_number_30
-    else:
-        raise Exception("Sorry, dataset picking wrong")
-    if zero_out:
-        data_path = 'dataset/ZeroHighFreq/' + dataset + 'people_freq_' + str(zero_out_freq)
+    if people_number == '12':
 
-    if not os.path.exists(data_path):
+        DMD = DMD_group_number
+        # people_number_list = all_group_number
+    elif people_number == '30':
+
+        DMD = DMD_group_number_30
+        # people_number_list = all_group_number_30
+    else:
+        raise Exception("Sorry, people number picking wrong")
+
+    if not os.path.exists(dataset_path):
         raise Exception("Sorry, dataset not creating yet")
     # if numbers is None:
     #     numbers = all_group_number
-    for number in numbers:
-        csv_data = pd.read_csv(os.path.join(data_path, number + '.csv'))
+
+    people_number_list = [i.split('.')[0] for i in os.listdir(dataset_path)]
+    for number in people_number_list:
+        csv_data = pd.read_csv(os.path.join(dataset_path, number + '.csv'))
         np_data = np.array(csv_data)
         x = np.array(np_data[:, 1])
         y = np.array(np_data[:, 2])
