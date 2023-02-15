@@ -10,9 +10,11 @@ from scipy.fftpack import fft, fftfreq
 import seaborn as sns
 
 from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
-    TD_group_number_30, DMD_group_number_30, all_group_number_30,bad_sample_30
+    TD_group_number_30, DMD_group_number_30, all_group_number_30, bad_sample_30, six_min_path_30, hundred_meter_path_26
 
 dir_list = os.listdir("dataset")
+
+
 # print(len(dir_list))
 # print(dir_list)
 
@@ -25,13 +27,6 @@ dir_list = os.listdir("dataset")
 # X: mediolateral
 # Y: anteroposterior
 # Z: vertical
-
-DMD_group_number = ['990012', '990015', '990016', '990023008', '990023010', '990023015']
-TD_group_number = ['990014', '990017', '990018', '990023003', '990023011', '990023014']
-all_group_number = ['990012', '990014', '990015', '990016', '990017', '990018', '990023008', '990023010', '990023015',
-                    '990023003', '990023011', '990023014']
-low_sample_rate = ['990012', '990014', '990015', '990016', '990017', '990018']
-high_sample_rate = ['990023003', '990023008', '990023010', '990023011', '990023014', '990023015']
 
 
 def the_length_of_data(labels=None):
@@ -260,8 +255,8 @@ def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', sa
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     txt_dir = os.path.join(file_dir, label + '_' + axis_marker + '_FFT_result.txt')
-    # if False:
-    if os.path.exists(txt_dir):
+    if False:
+    # if os.path.exists(txt_dir):
         yf = np.loadtxt(txt_dir, delimiter=',').view(complex).reshape(-1)
     else:
         yf = fft(data)
@@ -335,9 +330,10 @@ def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', sa
     # print(f"lag: {top_k_idxs[acf_scores.index(max(acf_scores))]} has highest fft acf: {max(acf_scores)}")
 
 
-def frequency_by_FFT(labels=None, read_dir="dataset", save_dir='./visualize/FFT'):
+def frequency_by_FFT(labels=None, read_dir="dataset", save_dir='./visualize/FFT/12_people'):
     if labels is None:
-        labels = ['990012']
+        # labels = ['990012']
+        labels = all_group_number
     for label in labels:
         csv_data = pd.read_csv(os.path.join(read_dir, label + '.csv'))
         np_data = np.array(csv_data)
@@ -350,7 +346,7 @@ def frequency_by_FFT(labels=None, read_dir="dataset", save_dir='./visualize/FFT'
         # print(a.size)
         # print(a[0:a.size:3])
         # if False:
-        if label in high_sample_rate:
+        if label in high_sample_rate and labels == all_group_number:
             ts = ts[0:ts.size:3]
             x = x[0:x.size:3]
             y = y[0:y.size:3]
@@ -358,10 +354,14 @@ def frequency_by_FFT(labels=None, read_dir="dataset", save_dir='./visualize/FFT'
             vertical = x
             mediolateral = y
             anteroposterior = z
-        else:
+        elif labels == all_group_number:
             vertical = z
             mediolateral = x
             anteroposterior = y
+        else:
+            vertical = x
+            mediolateral = y
+            anteroposterior = z
         print("The frequency an phase of '" + label + "'")
         sample_number = ts.shape[0]
         sample_spacing = (ts[-1] - ts[0]) / ts.shape[0]
@@ -516,10 +516,15 @@ def pearson(labels=None):
 
 
 def visualize_vma(sample_number=100, position=None):
-    for label in bad_sample_30:
+    dataset_path = hundred_meter_path_26
+    save_path = './visualize/30_people_vma/hundred_meter'
+    people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]
+
+    for label in people_number:
         # csv_data = pd.read_csv(os.path.join("dataset", label + '.csv'))
         # csv_data = pd.read_csv(os.path.join("dataset/ZeroHighFreq/12people_freq_7.5", label + '.csv'))
-        csv_data = pd.read_csv(os.path.join("dataset/30_dmd_data_set/Speed-Calibration-L3", label + '.csv'))
+        # csv_data = pd.read_csv(os.path.join("dataset/30_dmd_data_set/Speed-Calibration-L3", label + '.csv'))
+        csv_data = pd.read_csv(os.path.join(dataset_path, label + '.csv'))
         np_data = np.array(csv_data)
 
         if position is None:
@@ -578,13 +583,19 @@ def visualize_vma(sample_number=100, position=None):
         ax.set_ylabel("sensor data")
         ax.legend()
         # plt.savefig(os.path.join('./visualize/vma', label))
-        save_path = './visualize/30_people_vma'
+
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         plt.savefig(os.path.join(save_path, label))
 
 
+dataset_path = 'dataset/30_dmd_data_set/Speed-Calibration-L3'
+save_path = './visualize/FFT/30_people'
+people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]
+
 # visualize_vma(position=None)
 # time_intervals_checking()
-frequency_by_FFT(labels=bad_sample_30, read_dir='dataset/30_dmd_data_set/Speed-Calibration-L3',
-                 save_dir='visualize/bad_sample_30/FFT')
+frequency_by_FFT(labels=people_number, read_dir=dataset_path,
+                 save_dir=save_path)
+
+# frequency_by_FFT(labels=None)

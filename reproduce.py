@@ -10,12 +10,14 @@ from torch import nn
 from tqdm import tqdm
 from window import window_oper, window_oper_HS_3windows, window_FFT_oper
 from CNN_torch import CNN_DMD, CNN_var, CNN_Pooling, one_axis_CNN, CNN_for_window_FFT
+from resnet1d import ResNet1D
+
 from DMDdataset import DMDDataset
 from result_record import csv_writer
 # import torchvision.transforms as transforms
 from torch.multiprocessing import Pool
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import StepLR, MultiStepLR
 import torch.nn.functional as F
 from datetime import datetime
 from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
@@ -30,7 +32,7 @@ BATCH_SIZE = 2048
 # EPOCH = 100000
 NUM_WORKERS = 0
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 
 # np.random.seed(1)
@@ -112,10 +114,49 @@ def get_one_axis(window_data, axis='v'):
     window_data = window_data[:, np.newaxis, :]
     return window_data
 
+def save_img_epoch_acc(train_acc_epoch,test_acc_epoch,loss_epoch,EPOCH,save_dir,number):
+    # plotting
+    plt.figure(figsize=(18, 15))
+    ax = plt.subplot(311)
+    ax.plot(range(EPOCH + 1), train_acc_epoch, label='train_acc_epoch')
+    ax.set_xlabel('epoch')
+    ax.set_ylabel('train_acc_epoch')
+    ax.grid()
+    ax.legend()
+
+    ax = plt.subplot(312)
+    ax.plot(range(EPOCH + 1), test_acc_epoch, label='test_acc_epoch')
+    ax.set_xlabel('epoch')
+    ax.set_ylabel('test_acc_epoch')
+    ax.grid()
+    ax.legend()
+
+    ax = plt.subplot(313)
+    ax.plot(range(EPOCH + 1), loss_epoch, label='loss')
+    ax.set_xlabel('epoch')
+    ax.set_ylabel('loss_epoch')
+    ax.grid()
+    ax.legend()
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    plt.savefig(os.path.join(save_dir, number))
+
+
+def save_img_prob_epoch(epochs,output_values,save_dir,number):
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    # np.savetxt(os.path.join(save_dir, str(fold_i + 1) + '_' + str(epochs + 1)),output_values,delimiter=',')
+    plt.figure(figsize=(18, 15))
+    plt.scatter(range(output_values.shape[0]), output_values[:, 0], linestyle='solid', label='TD')
+    plt.scatter(range(output_values.shape[0]), output_values[:, 1], linestyle='solid', label='DMD')
+    plt.legend()
+    plt.savefig(os.path.join(save_dir, number + '_' + str(epochs + 1)))
+
 
 def one_fold_training(number, patient_makers, window_labels, window_data, NORMALIZE, EPOCH, WINDOW_SIZE, device,
-                      GET_OUTPUT_PROB, save_dir, SAVE_IMAGE):
+                      GET_OUTPUT_PROB, save_dir, SAVE_IMAGE, ):
     # divide window for train and test
+    # print(number + ' is on ' + str(device))
     start_time = time.time()
     testing_idx = [i for i, x in enumerate(patient_makers) if x == number]
     training_idx = [i for i, x in enumerate(patient_makers) if x != number]
@@ -131,25 +172,27 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
         training_data, testing_data = normalize(training_data, testing_data)
 
     # making trainset and testset and loader
-    trainset = DMDDataset(training_labels, training_data, dimension=1, device=device)  # if 2d conv, dimension =2
-    testset = DMDDataset(testing_labels, testing_data, dimension=1, device=device)
-    # trainset = DMDDataset(training_labels, training_data, device=device)  # if 2d conv, dimension =2
-    # testset = DMDDataset(testing_labels, testing_data, device=device)
+    trainset = DMDDataset(training_labels, training_data, dimension=1)  # if 2d conv, dimension =2
+    testset = DMDDataset(testing_labels, testing_data, dimension=1)
+    # trainset = DMDDataset(training_labels, training_data)  # if 2d conv, dimension =2
+    # testset = DMDDataset(testing_labels, testing_data)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
                                               shuffle=True, pin_memory=False)
 
     testloader = torch.utils.data.DataLoader(testset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
                                              shuffle=False, pin_memory=False)
 
-    net = CNN_DMD(WINDOW_SIZE).float().to(device)
+    # net = CNN_DMD(WINDOW_SIZE).float().to(device)
     # net = CNN_var(WINDOW_SIZE).float().to(device)
-
-    net = CNN_Pooling(WINDOW_SIZE, N_OF_Module=2).float().to(device)
+    net = ResNet1D(in_channels=3, base_filters=16, kernel_size=3, stride=2, groups=1, n_block=24, n_classes=2,
+                   downsample_gap=6, increasefilter_gap=6, use_bn=True, use_do=True, verbose=False)
+    # net = CNN_Pooling(WINDOW_SIZE, N_OF_Module=2).float().to(device)
     net = nn.DataParallel(net).to(device)
     # net = one_axis_CNN(WINDOW_SIZE, N_OF_Module=2).float().to(device)
     # net = CNN_for_window_FFT(WINDOW_SIZE, N_OF_Module=2).float().to(device)
     optimizer = optim.Adam(net.parameters(), lr=LEARN_RATE)
-    scheduler = StepLR(optimizer, step_size=10, gamma=0.2)
+    # scheduler = StepLR(optimizer, step_size=10, gamma=0.2)
+    scheduler = MultiStepLR(optimizer, milestones=[10, 50], gamma=0.2)
     loss_function = nn.CrossEntropyLoss()
 
     # acc epoch init and acc before training
@@ -199,15 +242,8 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
         # StepLR step
         scheduler.step()
 
-        # if GET_OUTPUT_PROB:
-        #     if not os.path.exists(save_dir):
-        #         os.makedirs(save_dir)
-        #     # np.savetxt(os.path.join(save_dir, str(fold_i + 1) + '_' + str(epochs + 1)),output_values,delimiter=',')
-        #     plt.figure(figsize=(18, 15))
-        #     plt.scatter(range(output_values.shape[0]), output_values[:, 0], linestyle='solid', label='TD')
-        #     plt.scatter(range(output_values.shape[0]), output_values[:, 1], linestyle='solid', label='DMD')
-        #     plt.legend()
-        #     plt.savefig(os.path.join(save_dir, number + '_' + str(epochs + 1)))
+        if GET_OUTPUT_PROB:
+            save_img_prob_epoch(epochs, output_values, save_dir, number)
         # print(time.time() - start_time)
         if epochs == EPOCH - 1:
             correct_percentage_train, correct_percentage_test, output_values, conf_total_test = model_test(net,
@@ -227,40 +263,17 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
     # print(prof.key_averages().table(sort_by="self_cpu_time_total", row_limit=10))
 
     if SAVE_IMAGE:
-        # plotting
-        plt.figure(figsize=(18, 15))
-        ax = plt.subplot(311)
-        ax.plot(range(EPOCH + 1), train_acc_epoch, label='train_acc_epoch')
-        ax.set_xlabel('epoch')
-        ax.set_ylabel('train_acc_epoch')
-        ax.grid()
-        ax.legend()
-
-        ax = plt.subplot(312)
-        ax.plot(range(EPOCH + 1), test_acc_epoch, label='test_acc_epoch')
-        ax.set_xlabel('epoch')
-        ax.set_ylabel('test_acc_epoch')
-        ax.grid()
-        ax.legend()
-
-        ax = plt.subplot(313)
-        ax.plot(range(EPOCH + 1), loss_epoch, label='loss')
-        ax.set_xlabel('epoch')
-        ax.set_ylabel('loss_epoch')
-        ax.grid()
-        ax.legend()
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        plt.savefig(os.path.join(save_dir, number))
+        save_img_epoch_acc(train_acc_epoch, test_acc_epoch, loss_epoch, EPOCH, save_dir, number)
 
     return correct_percentage_test
+
 
 
 def CNN_debug(epochs=20, window_step=40, window_size=80, people_number=all_group_number_30,
               dataset_path=L3_path_30, model_save=False, NORMALIZE=False,
               TRAIN_JUST_ONE=False, GET_OUTPUT_PROB=False, SAVE_IMAGE=True, BAD_SAMPLE_INVESTIGATE=False,
               BAD_SAMPLE_KICKOUT=False, ZERO_OUT=True, zero_out_freq=10):
-    torch.multiprocessing.set_start_method('spawn')
+
     # init
     currentDateAndTime = datetime.now()
     currentTime = currentDateAndTime.strftime("%m_%d_%H_%M_%S")
@@ -268,8 +281,7 @@ def CNN_debug(epochs=20, window_step=40, window_size=80, people_number=all_group
                             ('30P' if people_number == all_group_number_30 else '12P') + currentTime)
 
     people_number = people_number
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device)
+
     # if torch.cuda.device_count() > 1:
     #     print('%d GPUs are using' % torch.cuda.device_count())
     EPOCH = epochs
@@ -315,35 +327,42 @@ def CNN_debug(epochs=20, window_step=40, window_size=80, people_number=all_group
     # making dataset
     # people_number = ['23015']
     total_person_count = len(people_number)
-
+    # pool = Pool(1)
+    parameters_lists = []
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # print(device)
     for fold_i, number in enumerate(people_number):
-        pool = Pool(10)
-        person_acc_list = []
-        parameters_lists = []
-        # async_result = pool.apply_async(one_fold_training, args=(number, patient_makers, window_labels, window_data,
-        #                                                          NORMALIZE, EPOCH, WINDOW_SIZE, device,
-        #                                                          GET_OUTPUT_PROB, save_dir, SAVE_IMAGE))
-        # correct_percentages.append(async_result.get())
-        for i in range(10):
-            parameters_lists.append([number, patient_makers, window_labels, window_data,
-                                     NORMALIZE, EPOCH, WINDOW_SIZE, device,
-                                     GET_OUTPUT_PROB, save_dir, SAVE_IMAGE])
-        iter_para = iter(parameters_lists)
-        pool_mapping_results = pool.starmap_async(one_fold_training, iter_para)
-        pool.close()
-        pool.join()
-        for value in pool_mapping_results.get():
-            person_acc_list.append(value)
-        person_acc_lists.append(person_acc_list)
-    print(person_acc_lists)
-    person_acc_lists = np.array(person_acc_lists)
-    mean_person = np.mean(person_acc_lists, axis=1)
-    std_person = np.std(person_acc_lists, axis=1)
-    min_person = np.min(person_acc_lists, axis=1)
-    max_person = np.max(person_acc_lists, axis=1)
-    for fold_i, number in enumerate(people_number):
-        print('%s has mean of %.3f and std of %.3f, min:%.3f,max:%.3f'
-              % (number, mean_person[fold_i], std_person[fold_i], min_person[fold_i], max_person[fold_i]))
+        # person_acc_list = []
+        # print(number + ' will be on cuda:' + str(fold_i % 6))
+        # device = 'cuda:' + str(fold_i % 6)
+        # for i in range(10):
+        #     parameters_lists.append([number, patient_makers, window_labels, window_data,
+        #                              NORMALIZE, EPOCH, WINDOW_SIZE, device,
+        #                              GET_OUTPUT_PROB, save_dir, SAVE_IMAGE])
+        # parameters_lists.append([number, patient_makers, window_labels, window_data,
+        #                          NORMALIZE, EPOCH, WINDOW_SIZE, device,
+        #                          GET_OUTPUT_PROB, save_dir, SAVE_IMAGE])
+        value = one_fold_training(number, patient_makers, window_labels, window_data,
+                                  NORMALIZE, EPOCH, WINDOW_SIZE, device,
+                                  GET_OUTPUT_PROB, save_dir, SAVE_IMAGE)
+        correct_percentages.append(value)
+    # iter_para = iter(parameters_lists)
+    # pool_mapping_results = pool.starmap_async(one_fold_training, iter_para)
+    # pool.close()
+    # pool.join()
+    # for value in pool_mapping_results.get():
+    # person_acc_list.append(value)
+    # person_acc_lists.append(person_acc_list)
+    # correct_percentages.append(value)
+    # print(person_acc_lists)
+    # person_acc_lists = np.array(person_acc_lists)
+    # mean_person = np.mean(person_acc_lists, axis=1)
+    # std_person = np.std(person_acc_lists, axis=1)
+    # min_person = np.min(person_acc_lists, axis=1)
+    # max_person = np.max(person_acc_lists, axis=1)
+    # for fold_i, number in enumerate(people_number):
+    #     print('%s has mean of %.3f and std of %.3f, min:%.3f,max:%.3f'
+    #           % (number, mean_person[fold_i], std_person[fold_i], min_person[fold_i], max_person[fold_i]))
     correct_percentages = np.array(correct_percentages)
     correct_person_count = np.sum(correct_percentages > 0.5)
     for i in iter(np.where(correct_percentages > 0.5)[0].tolist()):
@@ -367,8 +386,7 @@ def multiple_running(repeat_time=1, save_dir='./save_result', word_marker='6_min
 
     for i in range(repeat_time):
         # print('multiple_running for ' + str(repeat_time))
-        print('current: EPOCH%d W_SIZE%d W_STEP%d ' % (20, WINDOW_SIZE, WINDOW_STEP) + word_marker + '_norm_' + str(
-            NORMALIZE))
+        print('current: ' + word_marker)
         acc, wrong_list = CNN_debug(epochs=EPOCHS, window_step=WINDOW_STEP, window_size=WINDOW_SIZE,
                                     people_number=people_number,
                                     dataset_path=dataset_path, model_save=False, NORMALIZE=NORMALIZE,
@@ -402,11 +420,20 @@ if __name__ == "__main__":
     # multi running to get limit
     w_size = 160
     w_step = 5
+    NORMALIZE = False
+    print('resnet_6_min_walk and resnet_100_meter_walk')
+    torch.multiprocessing.set_start_method('spawn')
 
-    multiple_running(repeat_time=1, save_dir='./save_result', NORMALIZE=True,
-                     word_marker='TEN_TIMES_6_min_walk_zeroout_15size' + str(w_size) + '_step' + str(
-                         w_step) + '_Norm_' + str(True),
-                     dataset_path='dataset/ZeroHighFreq/six_min_30people_freq_15',
+    multiple_running(repeat_time=1, save_dir='./save_result', NORMALIZE=NORMALIZE,
+                     word_marker='resnet_100_meter_walk' + str(w_size) + '_step' + str(
+                         w_step) + '_Norm_' + str(NORMALIZE),
+                     dataset_path='dataset/30_dmd_data_set/100-meter-walk',
+                     WINDOW_SIZE=w_size, WINDOW_STEP=w_step)
+
+    multiple_running(repeat_time=1, save_dir='./save_result', NORMALIZE=NORMALIZE,
+                     word_marker='resnet_6_min_walk' + str(w_size) + '_step' + str(
+                         w_step) + '_Norm_' + str(NORMALIZE),
+                     dataset_path='dataset/30_dmd_data_set/6-min-walk',
                      WINDOW_SIZE=w_size, WINDOW_STEP=w_step)
 
 # for Norm in [False]:

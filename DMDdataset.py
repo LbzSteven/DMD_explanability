@@ -8,7 +8,7 @@ import torch
 
 class DMDDataset(Dataset):
 
-    def __init__(self, labels, data, transform=None, dimension=2, device='cuda:0'):
+    def __init__(self, labels, data, transform=None, dimension=2):
 
         self.labels = torch.from_numpy(labels)
         if dimension == 2:
