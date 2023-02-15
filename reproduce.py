@@ -81,9 +81,6 @@ def model_test(model, trainLoader, testLoader, device, GET_OUTPUT_PROB=False):
         window_correct_train += (predicted == labels).sum().item()
     for i, sample_test in enumerate(testLoader, 0):
         labels_test, data_test = sample_test['label'].to(device).to(torch.int64), sample_test['data'].to(device).float()
-        # labels_test = (labels_test + 1) % 2 #SHAHBAZ
-        # print(labels_test)
-
         outputs = model(data_test)
         how_many_batch += 1
         conf_total_test += torch.mean(outputs[:, labels_test[0]])  # SHAHBAZ
@@ -201,20 +198,20 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
     loss_epoch = []
     correct_percentage_test = 0
 
-    # correct_percentage_train, correct_percentage_test, output_values, conf_total_test = model_test(net,
-    #                                                                                                trainLoader=trainloader,
-    #                                                                                                testLoader=testloader,
-    #                                                                                                device=device,
-    #                                                                                                GET_OUTPUT_PROB=GET_OUTPUT_PROB)
-    #
-    # print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f lr for next epoch %f conf %.3f' % (
-    #     number, 0, correct_percentage_train, correct_percentage_test, 0, scheduler.get_last_lr()[0], conf_total_test))
+    correct_percentage_train, correct_percentage_test, output_values, conf_total_test = model_test(net,
+                                                                                                   trainLoader=trainloader,
+                                                                                                   testLoader=testloader,
+                                                                                                   device=device,
+                                                                                                   GET_OUTPUT_PROB=GET_OUTPUT_PROB)
 
+    print('%s: epoch %d train per:%.3f,test per:%.3f,run loss %.3f lr for next epoch %f conf %.3f' % (
+        number, 0, correct_percentage_train, correct_percentage_test, 0, scheduler.get_last_lr()[0], conf_total_test))
+    exit()
     # train_acc_epoch.append(correct_percentage_train)
     # test_acc_epoch.append(correct_percentage_test)
     # loss_epoch.append(0)
 
-    # print('patient: ', number, ' train start')
+    # profiler
     # with torch.profiler.profile(
     #         activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA]) as prof:
     # print('train start %.3f for preparing training set length %d' % ((time.time()-start_time), len(trainset)))
@@ -237,7 +234,7 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
             loss.backward()
             optimizer.step()
 
-            # running_loss +=
+            running_loss +=loss.item()
 
         # StepLR step
         scheduler.step()
@@ -254,7 +251,7 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
             # torch.cuda.synchronize()
             print(
                 '%s: epoch %d train per:%.3f,test per:%.3f,loss: %.3f, lr for next epoch %f, time costing %.3f, conf %.3f'
-                % (number, epochs + 1, correct_percentage_train, correct_percentage_test, loss.item(),
+                % (number, epochs + 1, correct_percentage_train, correct_percentage_test, running_loss,
                    scheduler.get_last_lr()[0], time.time() - start_time, conf_total_test))
 
     # train_acc_epoch.append(correct_percentage_train)
