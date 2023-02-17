@@ -34,7 +34,7 @@ NUM_WORKERS = 0
 
 # np.random.seed(1)
 
-def normalize(window_data_train, window_data_test):
+def normalize_oper(window_data_train, window_data_test):
     if window_data_train.ndim == 2:
         t_train = window_data_train[:, np.newaxis]
         t_test = window_data_test[:, np.newaxis]
@@ -150,7 +150,7 @@ def save_img_prob_epoch(epochs, output_values, save_dir, number):
     plt.close()
 
 
-def one_fold_training(number, patient_makers, window_labels, window_data, NORMALIZE, EPOCH, WINDOW_SIZE, device,
+def one_fold_training(model, arg_list, number, patient_makers, window_labels, window_data, NORMALIZE, EPOCH, device,
                       GET_OUTPUT_PROB, save_dir, SAVE_IMAGE, LEARN_RATE, BATCH_SIZE):
     # divide window for train and test
     # print(number + ' is on ' + str(device))
@@ -170,7 +170,7 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
 
     # normalize based on the max an min of training data
     if NORMALIZE:
-        training_data, testing_data = normalize(training_data, testing_data)
+        training_data, testing_data = normalize_oper(training_data, testing_data)
 
     # making trainset and testset and loader
     trainset = DMDDataset(training_labels, training_data, dimension=1)  # if 2d conv, dimension =2
@@ -185,13 +185,14 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
 
     # net = CNN_DMD(WINDOW_SIZE).float().to(device)
     # net = CNN_var(WINDOW_SIZE).float().to(device)
-    net = ResNet1D(in_channels=3, base_filters=16, kernel_size=3, stride=2, groups=1, n_block=12, n_classes=2,
-                   downsample_gap=12, increasefilter_gap=12, use_bn=True, use_do=True, verbose=False)
+    # net = ResNet1D(in_channels=3, base_filters=16, kernel_size=3, stride=2, groups=1, n_block=12, n_classes=2,
+    #                downsample_gap=12, increasefilter_gap=12, use_bn=True, use_do=True, verbose=False)
     # net = CNN_Pooling(WINDOW_SIZE, N_OF_Module=2).float().to(device)
     # net = nn.DataParallel(net).to(device)
-    net = net.to(device)
     # net = one_axis_CNN(WINDOW_SIZE, N_OF_Module=2).float().to(device)
     # net = CNN_for_window_FFT(WINDOW_SIZE, N_OF_Module=2).float().to(device)
+    net = model(*arg_list)
+    net = net.to(device)
     optimizer = optim.Adam(net.parameters(), lr=LEARN_RATE)
     # scheduler = StepLR(optimizer, step_size=10, gamma=0.2)
     scheduler = MultiStepLR(optimizer, milestones=[10, 50], gamma=0.2)
@@ -278,50 +279,31 @@ def one_fold_training(number, patient_makers, window_labels, window_data, NORMAL
     return correct_percentage_test
 
 
-def CNN_debug(word_marker, LEARN_RATE, BATCH_SIZE, epochs=20, window_step=40, window_size=80,
-              people_number=all_group_number_30,
-              dataset_path=L3_path_30, model_save=False, NORMALIZE=False,
-              TRAIN_JUST_ONE=False, GET_OUTPUT_PROB=False, SAVE_IMAGE=True, BAD_SAMPLE_INVESTIGATE=False,
-              BAD_SAMPLE_KICKOUT=False, ZERO_OUT=True, zero_out_freq=10, NUM_OF_GPU=6, ):
+def n_fold_exper(model, arg_list, word_marker, lr, batch_size, epochs, window_step, window_size,
+                 dataset_path, normalize, num_of_gpu, get_output_prob, save_image, TRAIN_JUST_ONE,
+                 BAD_SAMPLE_KICKOUT, ZERO_OUT, zero_out_freq, model_save, BAD_SAMPLE_INVESTIGATE, dataset_marker='30'):
     # init
     start_time = time.time()
     currentDateAndTime = datetime.now()
     currentTime = currentDateAndTime.strftime("%m_%d_%H_%M")
     save_dir = os.path.join('save_result/', word_marker + '_Epoch_acc_prob_out_' + currentTime)
 
-    people_number = people_number
-
     EPOCH = epochs
-
-    WINDOW_STEP = window_step  # 40
+    WINDOW_STEP = window_step
     WINDOW_SIZE = window_size
 
-    if people_number == all_group_number_30:
-        # patient_makers, window_labels, window_data = window_oper(dataset, WINDOW_SIZE, WINDOW_STEP, people_number='30')
-        patient_makers, window_labels, window_data = window_oper(people_number, WINDOW_SIZE, WINDOW_STEP,
-                                                                 people_number='30', dataset_path=dataset_path, )
-    elif people_number == all_group_number:
-        # patient_makers, window_labels, window_data = window_oper_HS_3windows(dataset, WINDOW_SIZE, WINDOW_STEP,
-        # dataset='12')
-        # patient_makers, window_labels, window_data = window_oper(dataset, WINDOW_SIZE, WINDOW_STEP, people_number='12',
-        #                                                          zero_out=True, zero_out_freq=10)
-        # patient_makers, window_labels, window_data = window_FFT_oper(dataset, WINDOW_SIZE, WINDOW_STEP, people_number='12')
-        patient_makers, window_labels, window_data = window_oper(people_number, WINDOW_SIZE, WINDOW_STEP,
-                                                                 people_number='12', dataset_path=dataset_path, )
-    else:
-        raise Exception('wrong dataset')
-    window_labels = np.array(window_labels)
-    window_data = np.array(window_data)
-    # print(window_labels.shape)
-    # print(window_data.shape)
+    patient_makers, window_labels, window_data = window_oper(WINDOW_SIZE, WINDOW_STEP,
+                                                             dataset_marker=dataset_marker, dataset_path=dataset_path, )
+
+    # patient_makers, window_labels, window_data = window_oper_HS_3windows(dataset, WINDOW_SIZE, WINDOW_STEP,dataset='12')
+    # patient_makers, window_labels, window_data = window_FFT_oper(dataset, WINDOW_SIZE, WINDOW_STEP, people_number='12')
+
     # get one axis
     # window_data = get_one_axis(window_data, axis='a')
-    # print('current: EPOCH %d W_SIZE %d W_STEP %d' % (EPOCH, WINDOW_SIZE, WINDOW_STEP))
-    people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]
-    if TRAIN_JUST_ONE:
-        # dataset = [dataset[0]]
 
-        people_number = ['990023015']
+    people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]  # regenerate correct people number
+    if TRAIN_JUST_ONE:
+        people_number = [people_number[0]]
 
     # if BAD_SAMPLE_INVESTIGATE:
     #     people_number = bad_sample
@@ -331,23 +313,21 @@ def CNN_debug(word_marker, LEARN_RATE, BATCH_SIZE, epochs=20, window_step=40, wi
     wrong_person_list = []
     correct_percentages = []
     person_acc_lists = []
-    # making dataset
-    # people_number = ['23015']
 
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     total_person_count = len(people_number)
-    NUM_OF_POOL = math.ceil(len(people_number) / NUM_OF_GPU)
+    NUM_OF_POOL = math.ceil(len(people_number) / num_of_gpu)
     fold_i = 0
     for i_pool in range(NUM_OF_POOL):
         # parameters_lists = []
-        pool = Pool(NUM_OF_GPU)
+        pool = Pool(num_of_gpu)
         parameters_lists = []
-        for i_process in range(NUM_OF_GPU):
+        for i_process in range(num_of_gpu):
             number = people_number[fold_i]
-            device = 'cuda:' + str(fold_i % NUM_OF_GPU)
-            parameters_lists.append([number, patient_makers, window_labels, window_data,
-                                     NORMALIZE, EPOCH, WINDOW_SIZE, device,
-                                     GET_OUTPUT_PROB, save_dir, SAVE_IMAGE, LEARN_RATE, BATCH_SIZE])
+            device = 'cuda:' + str(fold_i % num_of_gpu)
+            parameters_lists.append([model, arg_list, number, patient_makers, window_labels, window_data,
+                                     normalize, EPOCH, device, get_output_prob,
+                                     save_dir, save_image, lr, batch_size])
             fold_i += 1
             if fold_i == len(people_number):
                 break
@@ -403,11 +383,7 @@ def CNN_debug(word_marker, LEARN_RATE, BATCH_SIZE, epochs=20, window_step=40, wi
         correct_person_list.append(people_number[i])
     for i in iter(np.where(correct_percentages <= 0.5)[0].tolist()):
         wrong_person_list.append(people_number[i])
-    if SAVE_IMAGE:
-        print('images in %s' % save_dir)
 
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
     csv_writer_acc_count_wpl('model', people_number, 'correct_person_count', 'wrong_person_list', 'time')
     csv_writer_acc_count_wpl(word_marker + '_' + currentTime, correct_percentages, correct_person_count,
                              wrong_person_list, time.time() - start_time)
@@ -417,24 +393,19 @@ def CNN_debug(word_marker, LEARN_RATE, BATCH_SIZE, epochs=20, window_step=40, wi
     return (correct_person_count / total_person_count), wrong_person_list
 
 
-def multiple_running(repeat_time, LEARN_RATE, BATCH_SIZE,dataset_path,
-                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB,
-                     WINDOW_SIZE, WINDOW_STEP, people_number, EPOCHS, NUM_OF_GPU,
-                     save_mul=False, save_dir_mul='./save_result_mul',
+def multiple_running(model, arg_list, lr, batch_size, dataset_path,
+                     normalize, save_image, get_output_prob, w_size, w_step, epochs, num_of_gpu,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
                      word_marker='HEY! WHERE IS YOUR WORD MARKER?'):
     acc_s = []
     wrong_lists = []
     print(word_marker)
     for i in range(repeat_time):
-        # print('multiple_running for ' + str(repeat_time))
-        print('current: ' + word_marker)
-        acc, wrong_list = CNN_debug(word_marker, LEARN_RATE, BATCH_SIZE, epochs=EPOCHS, window_step=WINDOW_STEP,
-                                    window_size=WINDOW_SIZE,
-                                    people_number=people_number,
-                                    dataset_path=dataset_path, model_save=False, NORMALIZE=NORMALIZE,
-                                    TRAIN_JUST_ONE=False, GET_OUTPUT_PROB=GET_OUTPUT_PROB, SAVE_IMAGE=SAVE_IMAGE,
-                                    BAD_SAMPLE_INVESTIGATE=False, BAD_SAMPLE_KICKOUT=False,
-                                    ZERO_OUT=False, zero_out_freq=6, NUM_OF_GPU=NUM_OF_GPU)
+        acc, wrong_list = n_fold_exper(model, arg_list, word_marker, lr, batch_size, epochs, w_step, w_size,
+                                       dataset_path, normalize, num_of_gpu, get_output_prob, save_image,
+                                       TRAIN_JUST_ONE=False, BAD_SAMPLE_KICKOUT=False,
+                                       ZERO_OUT=False, zero_out_freq=False, model_save=False,
+                                       BAD_SAMPLE_INVESTIGATE=False, dataset_marker='30')
 
         acc_s.append(acc)
         wrong_lists += wrong_list
@@ -457,17 +428,14 @@ def multiple_running(repeat_time, LEARN_RATE, BATCH_SIZE,dataset_path,
                          sep=',')
 
 
-# multiple_running(repeat_time=1, save_dir='./save_result_mul', word_marker='albara_model_way', people_number=all_group_number,
-#                      dataset_path='dataset/downsample', NORMALIZE=False,
-#                      WINDOW_SIZE=30, WINDOW_STEP=30)
-
 if __name__ == "__main__":
     # multi running to get limit
-    w_size = 160
-    w_step = 5
+    W_SIZE = 160
+    W_STEP = 5
 
     SAVE_IMAGE = True
     GET_OUTPUT_PROB = True
+    EPOCHS = 100
     LEARN_RATE = 0.001
     BATCH_SIZE = 2048
     NUM_OF_GPU = 7
@@ -475,7 +443,7 @@ if __name__ == "__main__":
     # print('resnet_100_meter_walk norm true and 6 min true and false')
     torch.multiprocessing.set_start_method('spawn')
 
-    model1 = ResNet1D
+    model = ResNet1D
     in_channels = 3
     base_filters = 16
     kernel_size = 3
@@ -489,99 +457,25 @@ if __name__ == "__main__":
     use_do = True
     verbose = False
 
-    args = [in_channels, base_filters, kernel_size, stride, groups, n_block, n_classes, downsample_gap, increasefilter_gap, use_bn, use_do, verbose]
+    arg_list = [in_channels, base_filters, kernel_size, stride, groups, n_block, n_classes, downsample_gap,
+                increasefilter_gap, use_bn, use_do, verbose]
 
     NORMALIZE = True
-    multiple_running(LEARN_RATE=LEARN_RATE, BATCH_SIZE=BATCH_SIZE, repeat_time=1,
-                     save_mul=False, save_dir_mul='save_result_mul', NORMALIZE=NORMALIZE,
-                     SAVE_IMAGE=SAVE_IMAGE, GET_OUTPUT_PROB=GET_OUTPUT_PROB,
-                     word_marker='resnet24_avg_softmax_100_meter_walk' + str(w_size) + '_step' + str(
-                         w_step) + '_Norm_' + str(NORMALIZE),
-                     dataset_path='dataset/30_dmd_data_set/100-meter-walk',
-                     WINDOW_SIZE=w_size, WINDOW_STEP=w_step, NUM_OF_GPU=NUM_OF_GPU)
 
-    # multiple_running(LEARN_RATE=LEARN_RATE, BATCH_SIZE=BATCH_SIZE, repeat_time=1,
-    #                  save_mul=False, save_dir='./save_result_mul', NORMALIZE=NORMALIZE,
-    #                  SAVE_IMAGE=SAVE_IMAGE, GET_OUTPUT_PROB=GET_OUTPUT_PROB,
-    #                  word_marker='resnet24_6_min' + str(w_size) + '_step' + str(
-    #                      w_step) + '_Norm_' + str(NORMALIZE),
-    #                  dataset_path='dataset/30_dmd_data_set/6-min-walk',
-    #                  WINDOW_SIZE=w_size, WINDOW_STEP=w_step, NUM_OF_GPU=NUM_OF_GPU)
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, hundred_meter_path_26,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='resnet24_avg_softmax_100_meter_walk' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
 
     NORMALIZE = False
-    multiple_running(LEARN_RATE=LEARN_RATE, BATCH_SIZE=BATCH_SIZE, repeat_time=1,
-                     save_mul=False, save_dir_mul='save_result_mul', NORMALIZE=NORMALIZE,
-                     SAVE_IMAGE=SAVE_IMAGE, GET_OUTPUT_PROB=GET_OUTPUT_PROB,
-                     word_marker='resnet24_avg_softmax_100_meter_walk' + str(w_size) + '_step' + str(
-                         w_step) + '_Norm_' + str(NORMALIZE),
-                     dataset_path='dataset/30_dmd_data_set/100-meter-walk',
-                     WINDOW_SIZE=w_size, WINDOW_STEP=w_step, NUM_OF_GPU=NUM_OF_GPU)
-    # multiple_running(LEARN_RATE=LEARN_RATE, BATCH_SIZE=BATCH_SIZE, repeat_time=1,
-    #                  save_mul=False, save_dir='./save_result_mul', NORMALIZE=NORMALIZE,
-    #                  SAVE_IMAGE=SAVE_IMAGE, GET_OUTPUT_PROB=GET_OUTPUT_PROB,
-    #                  word_marker='resnet24_6_min' + str(w_size) + '_step' + str(
-    #                      w_step) + '_Norm_' + str(NORMALIZE),
-    #                  dataset_path='dataset/30_dmd_data_set/6-min-walk',
-    #                  WINDOW_SIZE=w_size, WINDOW_STEP=w_step, NUM_OF_GPU=NUM_OF_GPU)
 
-    # multiple_running(repeat_time=1, save_dir='./save_result_mul', NORMALIZE=NORMALIZE,
-    #                  word_marker='resnet_6_min_walk' + str(w_size) + '_step' + str(
-    #                      w_step) + '_Norm_' + str(NORMALIZE),
-    #                  dataset_path='dataset/30_dmd_data_set/6-min-walk',
-    #                  WINDOW_SIZE=w_size, WINDOW_STEP=w_step, NUM_OF_GPU=NUM_OF_GPU)
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, hundred_meter_path_26,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='resnet24_avg_softmax_100_meter_walk' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
 
-# for Norm in [False]:
-#     for window_size in [160]:
-#         for window_step in [int(window_size/2)]:
-# multiple_running(repeat_time=1, save_dir='./save_result_mul', NORMALIZE=Norm,
-#                  word_marker='100_meter_walk_raw_size' + str(window_size) + '_step' + str(
-#                      window_step),
-#                  dataset_path='dataset/30_dmd_data_set/100-meter-walk',
-#                  WINDOW_SIZE=window_size, WINDOW_STEP=window_step)
-#
-# multiple_running(repeat_time=1, save_dir='./save_result_mul', NORMALIZE=Norm,
-#                  word_marker='100_meter_walk_zeroout_15size' + str(window_size) + '_step' + str(
-#                      window_step),
-#                  dataset_path='dataset/ZeroHighFreq/hundred_meter_26people_freq_15',
-#                  WINDOW_SIZE=window_size, WINDOW_STEP=window_step)
-#
-# multiple_running(repeat_time=1, save_dir='./save_result_mul', NORMALIZE=Norm,
-#                  word_marker='100_meter_walk_zeroout_30size' + str(window_size) + '_step' + str(
-#                      window_step) + '_Norm_' + str(Norm),
-#                  dataset_path='dataset/ZeroHighFreq/hundred_meter_26people_freq_30',
-#                  WINDOW_SIZE=window_size, WINDOW_STEP=window_step)
-# multiple_running(repeat_time=1, save_dir='./save_result_mul', NORMALIZE=Norm,
-#                  word_marker='6_min_walk_raw_size' + str(window_size) + '_step' + str(
-#                      window_step),
-#                  dataset_path='dataset/30_dmd_data_set/6-min-walk',
-#                  WINDOW_SIZE=window_size, WINDOW_STEP=window_step)
-#
-# multiple_running(repeat_time=1, save_dir='./save_result_mul', NORMALIZE=Norm,
-#                  word_marker='6_min_walk_zeroout_15size' + str(window_size) + '_step' + str(
-#                      window_step),
-#                  dataset_path='dataset/ZeroHighFreq/six_min_30people_freq_15',
-#                  WINDOW_SIZE=window_size, WINDOW_STEP=window_step)
-#
-# multiple_running(repeat_time=1, save_dir='./save_result_mul', NORMALIZE=Norm,
-#                  word_marker='6_min_walk_zeroout_30size' + str(window_size) + '_step' + str(
-#                      window_step) + '_Norm_' + str(Norm),
-#                  dataset_path='dataset/ZeroHighFreq/six_min_30people_freq_30',
-#                  WINDOW_SIZE=window_size, WINDOW_STEP=window_step)
-
-
-# multiple_running(repeat_time=10, save_dir='./save_result_mul', NORMALIZE=True,
-#                  word_marker='TEN_TIMES_six_min_30people_raw_size' + str(160) + '_step' + str(
-#                      10) + '_Norm_' + str(True),
-#                  dataset_path='dataset/30_dmd_data_set/6-min-walk',
-#                  WINDOW_SIZE=160, WINDOW_STEP=10)
-#
-# multiple_running(repeat_time=10, save_dir='./save_result_mul', NORMALIZE=True,
-#                  word_marker='TEN_TIMES_100_meter_walk_raw_size' + str(160) + '_step' + str(
-#                      5),
-#                  dataset_path='dataset/30_dmd_data_set/100-meter-walk',
-#                  WINDOW_SIZE=160, WINDOW_STEP=5)
-
-# j = 0
 #
 # for EPOCH in [100, 500, 1000, 5000, 10000, 50000]:
 #     for WINDOW_SIZE in [30, 33, 90, 100]:

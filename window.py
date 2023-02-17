@@ -7,21 +7,21 @@ from constants import DMD_group_number, TD_group_number, all_group_number, low_s
     TD_group_number_30, DMD_group_number_30, all_group_number_30, L3_path_30
 
 
-def window_oper(people_number_list=None, window_size=33, window_step=33, people_number='30', dataset_path=L3_path_30,
+def window_oper(window_size=33, window_step=33, dataset_marker='30', dataset_path=L3_path_30,
                 ):
     paitent_makers = []
     labels = []
-    datas = []
-    if people_number == '12':
+    window_data = []
+    if dataset_marker == '12':
 
         DMD = DMD_group_number
         # people_number_list = all_group_number
-    elif people_number == '30':
+    elif dataset_marker == '30':
 
         DMD = DMD_group_number_30
         # people_number_list = all_group_number_30
     else:
-        raise Exception("Sorry, people number picking wrong")
+        raise Exception("Sorry, dataset picking wrong")
 
     if not os.path.exists(dataset_path):
         raise Exception("Sorry, dataset not creating yet")
@@ -52,9 +52,10 @@ def window_oper(people_number_list=None, window_size=33, window_step=33, people_
                 paitent_makers.append(number)
                 labels.append(label)
                 data = np.moveaxis(data, 0, -1)
-                datas.append(data)
-
-    return [paitent_makers, labels, datas]
+                window_data.append(data)
+    labels = np.array(labels)
+    window_data = np.array(window_data)
+    return [paitent_makers, labels, window_data]
 
 
 def window_oper_HS_3windows(numbers=None, window_size=33, window_step=33, dataset='30'):
