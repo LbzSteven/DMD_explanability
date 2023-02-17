@@ -39,9 +39,9 @@ def window_oper(people_number_list=None, window_size=33, window_step=33, people_
         # np_data[:, 2] = (y - min(y)) / (max(y) - min(y))
         # np_data[:, 3] = (z - min(z)) / (max(z) - min(z))
         if number in DMD:
-            label = 0
-        else:
             label = 1
+        else:
+            label = 0
         for s in range(0, len(csv_data), window_step):
 
             window = csv_data.iloc[s:s + window_size, 1:]

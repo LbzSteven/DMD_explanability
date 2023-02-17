@@ -194,7 +194,7 @@ class ResNet1D(nn.Module):
     """
 
     def __init__(self, in_channels, base_filters, kernel_size, stride, groups, n_block, n_classes, downsample_gap=2,
-                 increasefilter_gap=4, use_bn=True, use_do=True, verbose=False):
+                 increasefilter_gap=4, use_bn=True, use_do=True, verbose=False, input_size=160):
         super(ResNet1D, self).__init__()
 
         self.verbose = verbose
@@ -208,6 +208,8 @@ class ResNet1D(nn.Module):
         self.downsample_gap = downsample_gap  # 2 for base model
         self.increasefilter_gap = increasefilter_gap  # 4 for base model
 
+        self.input_size = input_size
+        self.last_output_size = int(self.input_size / (self.stride ** (self.n_block / self.downsample_gap)))
         # first block
         self.first_block_conv = MyConv1dPadSame(in_channels=in_channels, out_channels=base_filters,
                                                 kernel_size=self.kernel_size, stride=1)
@@ -257,7 +259,10 @@ class ResNet1D(nn.Module):
         self.final_relu = nn.ReLU(inplace=True)
         # self.do = nn.Dropout(p=0.5)
         self.dense = nn.Linear(out_channels, n_classes)
-        # self.softmax = nn.Softmax(dim=1)
+        # self.dense = nn.Linear(out_channels*self.last_output_size, 128)  #ziwen change from n_classes to 128
+        # self.dense_relu = nn.ReLU(inplace=True) #ziwen
+        # self.dense2 = nn.Linear(128, n_classes)  #ziwen
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
 
@@ -290,10 +295,13 @@ class ResNet1D(nn.Module):
             out = self.final_bn(out)
         out = self.final_relu(out)
         out = out.mean(-1)
+        out = out.view(x.shape[0], -1)
         if self.verbose:
             print('final pooling', out.shape)
         # out = self.do(out)
         out = self.dense(out)
+        # out = self.dense2(self.dense_relu(out))
+        out = self.softmax(out)
         if self.verbose:
             print('dense', out.shape)
         # out = self.softmax(out)
@@ -304,8 +312,8 @@ class ResNet1D(nn.Module):
 
 
 if __name__ == '__main__':
-    model = ResNet1D(in_channels=3, base_filters=16, kernel_size=3, stride=2, groups=1, n_block=24, n_classes=2,
-                     downsample_gap=6, increasefilter_gap=6, use_bn=True, use_do=True, verbose=True)
+    model = ResNet1D(in_channels=3, base_filters=16, kernel_size=3, stride=2, groups=1, n_block=48, n_classes=2,
+                     downsample_gap=12, increasefilter_gap=12, use_bn=True, use_do=True, verbose=True)
     model.double()
     print(model)
     inputs = np.random.randn(16, 3, 160)

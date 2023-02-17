@@ -1,7 +1,7 @@
 #dir
 /dataset
 /visualize
-/save_result
+/save_result_mul
 #file
 *.png
 *.zip

@@ -256,7 +256,7 @@ def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', sa
         os.makedirs(file_dir)
     txt_dir = os.path.join(file_dir, label + '_' + axis_marker + '_FFT_result.txt')
     if False:
-    # if os.path.exists(txt_dir):
+        # if os.path.exists(txt_dir):
         yf = np.loadtxt(txt_dir, delimiter=',').view(complex).reshape(-1)
     else:
         yf = fft(data)
@@ -515,9 +515,9 @@ def pearson(labels=None):
         sns.heatmap(overall_pearson_r, cmap="Greens", annot=True)
 
 
-def visualize_vma(sample_number=100, position=None):
-    dataset_path = hundred_meter_path_26
-    save_path = './visualize/30_people_vma/hundred_meter'
+def visualize_vma(dataset_path, save_path, sample_number=100, position=None):
+    dataset_path = dataset_path
+    save_path = save_path
     people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]
 
     for label in people_number:
@@ -575,6 +575,9 @@ def visualize_vma(sample_number=100, position=None):
         else:
             raise Exception("Sorry, position wrong")
         fig, ax = plt.subplots(figsize=(10, 6), dpi=400)
+        # print(ts.shape)
+        ts = np.linspace(0.0, len(ts)*0.01, num=len(ts)) # on sample data
+        # print(ts.shape)
         ax.plot(ts, vertical, label='vertical')
         ax.plot(ts, mediolateral, label='mediolateral')
         ax.plot(ts, anteroposterior, label='anteroposterior')
@@ -587,15 +590,16 @@ def visualize_vma(sample_number=100, position=None):
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         plt.savefig(os.path.join(save_path, label))
+        plt.close()
 
 
-dataset_path = 'dataset/30_dmd_data_set/Speed-Calibration-L3'
-save_path = './visualize/FFT/30_people'
+dataset_path = 'dataset/30_dmd_data_set/100-meter-walk'
+save_path = './visualize/30_people_vma/hundred_meter_by_actual_time'
 people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]
 
-# visualize_vma(position=None)
+visualize_vma(dataset_path=dataset_path, save_path=save_path, position=None)
 # time_intervals_checking()
-frequency_by_FFT(labels=people_number, read_dir=dataset_path,
-                 save_dir=save_path)
+# frequency_by_FFT(labels=people_number, read_dir=dataset_path,
+#                  save_dir=save_path)
 
 # frequency_by_FFT(labels=None)
