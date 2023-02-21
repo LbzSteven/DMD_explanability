@@ -1,7 +1,10 @@
 #dir
 /dataset
 /visualize
+/save_result
 /save_result_mul
+/visualize/FFT
+/visualize/FFT_legacy
 #file
 *.png
 *.zip
