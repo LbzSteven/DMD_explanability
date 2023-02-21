@@ -22,10 +22,10 @@ from torch.optim.lr_scheduler import StepLR, MultiStepLR
 import torch.nn.functional as F
 from datetime import datetime
 from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
-    TD_group_number_30, DMD_group_number_30, all_group_number_30, six_min_path_30, hundred_meter_path_26, L3_path_30, \
+    TD_group_number_30, DMD_group_number_30, all_group_number_30, six_min_path_29, hundred_meter_path_26, L3_path_30, \
     exclude_list_100m
 import pandas as pd
-
+from utils import *
 # WINDOW_SIZE = 33
 # WINDOW_STEP = 33
 
@@ -34,26 +34,6 @@ NUM_WORKERS = 0
 
 # np.random.seed(1)
 
-def normalize_oper(window_data_train, window_data_test):
-    if window_data_train.ndim == 2:
-        t_train = window_data_train[:, np.newaxis]
-        t_test = window_data_test[:, np.newaxis]
-    else:
-        t_train = np.moveaxis(window_data_train, 1, 2)
-        t_test = np.moveaxis(window_data_test, 1, 2)
-    if window_data_train.shape[2] == 1:
-        max_3_axis = np.max(t_train.reshape(-1, window_data_train.shape[2]))
-        min_3_axis = np.min(t_train.reshape(-1, window_data_train.shape[2]))
-    else:
-        max_3_axis = np.max(t_train.reshape(-1, window_data_train.shape[2]), axis=0)
-        min_3_axis = np.min(t_train.reshape(-1, window_data_train.shape[2]), axis=0)
-    for i in range(window_data_train.shape[1]):
-        t_train[:, :, i] = (t_train[:, :, i] - min_3_axis[i]) / (max_3_axis[i] - min_3_axis[i])
-        t_test[:, :, i] = (t_test[:, :, i] - min_3_axis[i]) / (max_3_axis[i] - min_3_axis[i])
-        # t_train[:, :, i] = (t_train[:, :, i] + 3) / (3 + 3)
-    window_data_train = np.moveaxis(t_train, 1, 2)
-    window_data_test = np.moveaxis(t_test, 1, 2)
-    return window_data_train, window_data_test
 
 
 def model_test(model, trainLoader, testLoader, device, GET_OUTPUT_PROB=False):
@@ -108,46 +88,6 @@ def get_one_axis(window_data, axis='v'):
     window_data = window_data[:, np.newaxis, :]
     return window_data
 
-
-def save_img_epoch_acc(train_acc_epoch, test_acc_epoch, loss_epoch, EPOCH, save_dir, number):
-    # plotting
-    save_dir = os.path.join(save_dir, 'epoch_acc')
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    plt.figure(figsize=(18, 15))
-    ax = plt.subplot(311)
-    ax.plot(range(EPOCH + 1), train_acc_epoch, label='train_acc_epoch')
-    ax.set_xlabel('epoch')
-    ax.set_ylabel('train_acc_epoch')
-    ax.grid()
-    ax.legend()
-
-    ax = plt.subplot(312)
-    ax.plot(range(EPOCH + 1), test_acc_epoch, label='test_acc_epoch')
-    ax.set_xlabel('epoch')
-    ax.set_ylabel('test_acc_epoch')
-    ax.grid()
-    ax.legend()
-
-    ax = plt.subplot(313)
-    ax.plot(range(EPOCH + 1), loss_epoch, label='loss')
-    ax.set_xlabel('epoch')
-    ax.set_ylabel('loss_epoch')
-    ax.grid()
-    ax.legend()
-
-    plt.savefig(os.path.join(save_dir, number))
-    plt.close()
-
-
-def save_img_prob_epoch(epochs, output_values, save_dir, number):
-    # np.savetxt(os.path.join(save_dir, str(fold_i + 1) + '_' + str(epochs + 1)),output_values,delimiter=',')
-    plt.figure(figsize=(18, 15))
-    plt.scatter(range(output_values.shape[0]), output_values[:, 0], linestyle='solid', label='TD')
-    plt.scatter(range(output_values.shape[0]), output_values[:, 1], linestyle='solid', label='DMD')
-    plt.legend()
-    plt.savefig(os.path.join(save_dir, number + '_' + str(epochs + 1)))
-    plt.close()
 
 
 def one_fold_training(model, arg_list, number, patient_makers, window_labels, window_data, NORMALIZE, EPOCH, device,
@@ -263,19 +203,19 @@ def one_fold_training(model, arg_list, number, patient_makers, window_labels, wi
     # print(prof.key_averages().table(sort_by="self_cpu_time_total", row_limit=10))
 
     if SAVE_IMAGE:
-        save_dir = os.path.join(save_dir, 'epoch_acc')
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        np.save(os.path.join(save_dir, number + '.npy'), output_values_lists)
-        save_img_epoch_acc(train_acc_epoch, test_acc_epoch, loss_epoch, EPOCH, save_dir, number)
+        save_dir_epoch_acc = os.path.join(save_dir, 'epoch_acc')
+        if not os.path.exists(os.path.join(save_dir_epoch_acc)):
+            os.makedirs(os.path.join(save_dir_epoch_acc))
+        np.save(os.path.join(save_dir_epoch_acc, number + '.npy'), output_values_lists)
+        # save_img_epoch_acc(train_acc_epoch, test_acc_epoch, loss_epoch, EPOCH, save_dir, number)
 
     if GET_OUTPUT_PROB:
-        save_dir = os.path.join(save_dir, 'origin_output_prob')
+        save_dir_prob = os.path.join(save_dir, 'origin_output_prob')
         output_values_lists = np.array(output_values_lists)
         # print('output_values_lists shape: ', output_values_lists.shape)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        np.save(os.path.join(save_dir, number + '.npy'), output_values_lists)
+        if not os.path.exists(save_dir_prob):
+            os.makedirs(save_dir_prob)
+        np.save(os.path.join(save_dir_prob, number + '.npy'), output_values_lists)
     return correct_percentage_test
 
 
@@ -443,7 +383,7 @@ if __name__ == "__main__":
     # print('resnet_100_meter_walk norm true and 6 min true and false')
     torch.multiprocessing.set_start_method('spawn')
 
-    model = ResNet1D
+    model = CNN_Pooling
     in_channels = 3
     base_filters = 16
     kernel_size = 3
@@ -457,23 +397,83 @@ if __name__ == "__main__":
     use_do = True
     verbose = False
 
-    arg_list = [in_channels, base_filters, kernel_size, stride, groups, n_block, n_classes, downsample_gap,
-                increasefilter_gap, use_bn, use_do, verbose]
-
+    # arg_list = [in_channels, base_filters, kernel_size, stride, groups, n_block, n_classes, downsample_gap,
+    #             increasefilter_gap, use_bn, use_do, verbose]\
+    N_OF_Module = 2
+    arg_list = [W_SIZE, N_OF_Module]
     NORMALIZE = True
 
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, six_min_path_29,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF2_6_min' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
     multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, hundred_meter_path_26,
                      NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
                      repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
-                     word_marker='resnet24_avg_softmax_100_meter_walk' + str(W_SIZE) + '_step' + str(
+                     word_marker='CNN_POOL_NOF2_100_meter' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
+    NORMALIZE = False
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, six_min_path_29,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF2_6_min' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, hundred_meter_path_26,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF2_100_meter' + str(W_SIZE) + '_step' + str(
                          W_STEP) + '_Norm_' + str(NORMALIZE))
 
-    NORMALIZE = False
+    N_OF_Module = 3
+    arg_list = [W_SIZE, N_OF_Module]
 
+    NORMALIZE = True
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, six_min_path_29,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF3_6_min' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
     multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, hundred_meter_path_26,
                      NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
                      repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
-                     word_marker='resnet24_avg_softmax_100_meter_walk' + str(W_SIZE) + '_step' + str(
+                     word_marker='CNN_POOL_NOF3_100_meter' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
+    NORMALIZE = False
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, six_min_path_29,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF3_6_min' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, hundred_meter_path_26,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF3_100_meter' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
+
+    N_OF_Module = 4
+    arg_list = [W_SIZE, N_OF_Module]
+    NORMALIZE = True
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, six_min_path_29,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF4_6_min' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, hundred_meter_path_26,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF4_100_meter' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
+    NORMALIZE = False
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, six_min_path_29,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF4_6_min' + str(W_SIZE) + '_step' + str(
+                         W_STEP) + '_Norm_' + str(NORMALIZE))
+    multiple_running(model, arg_list, LEARN_RATE, BATCH_SIZE, hundred_meter_path_26,
+                     NORMALIZE, SAVE_IMAGE, GET_OUTPUT_PROB, W_SIZE, W_STEP, EPOCHS, NUM_OF_GPU,
+                     repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
+                     word_marker='CNN_POOL_NOF4_100_meter' + str(W_SIZE) + '_step' + str(
                          W_STEP) + '_Norm_' + str(NORMALIZE))
 
 #

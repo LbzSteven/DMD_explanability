@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft, fftfreq, ifft
 from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
-    TD_group_number_30, DMD_group_number_30, all_group_number_30, bad_sample_30, six_min_path_30, hundred_meter_path_26
+    TD_group_number_30, DMD_group_number_30, all_group_number_30, bad_sample_30, six_min_path_29, hundred_meter_path_26
 
 dir_list = os.listdir("dataset")
 

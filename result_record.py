@@ -16,4 +16,4 @@ def csv_writer(epoch, WT_step, WT_size, model_para, acc):
 
 
 # csv_writer(10000, 33, 33, 'B_128_lr_0.001', 0.50)
-csv_writer_acc_count_wpl('description', [0.55, 0.55], 15, ['15', '16'], 'time')
+# csv_writer_acc_count_wpl('description', [0.55, 0.55], 15, ['15', '16'], 'time')

@@ -27,7 +27,7 @@ bad_sample_30 = ['23015', '23023', '23043', '23026', '23014', '23006', '23028', 
 
 L3_path_12 = './dataset'
 
-six_min_path_30 = r'./dataset/30_dmd_data_set/6-min-walk'
+six_min_path_29 = r'./dataset/30_dmd_data_set/6-min-walk'
 hundred_meter_path_26 = r'dataset/30_dmd_data_set/100-meter-walk'
 
 L1_path_30 = r'./dataset/30_dmd_data_set/Speed-Calibration-L1'
