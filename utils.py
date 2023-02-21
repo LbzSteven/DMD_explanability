@@ -1,6 +1,20 @@
+import csv
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+def get_one_axis(window_data, axis='v'):
+    if axis == 'v':
+        window_data = window_data[:, 0, :]
+    elif axis == 'm':
+        window_data = window_data[:, 1, :]
+    elif axis == 'a':
+        window_data = window_data[:, 2, :]
+    else:
+        raise Exception('wrong axis')
+    window_data = window_data[:, np.newaxis, :]
+    return window_data
 
 
 def normalize_oper(window_data_train, window_data_test):
@@ -64,3 +78,20 @@ def save_img_prob_epoch(epochs, output_values, save_dir, number):
     plt.legend()
     plt.savefig(os.path.join(save_dir, number + '_' + str(epochs + 1)))
     plt.close()
+
+
+def csv_writer_acc_count_wpl(word_marker, correct_percentages, correct_person_count, wrong_person_list, time):
+    with open(r'acc_count_wpl.csv', mode='a', newline='', encoding='utf8') as cfa:
+        wf = csv.writer(cfa)
+        data = [word_marker, correct_percentages, correct_person_count, wrong_person_list, time]
+        wf.writerow(data)
+
+
+def csv_writer(epoch, WT_step, WT_size, model_para, acc):
+    with open(r'acc.csv', mode='a', newline='', encoding='utf8') as cfa:
+        wf = csv.writer(cfa)
+        data = [epoch, WT_step, WT_size, model_para, acc]
+        wf.writerow(data)
+
+# csv_writer(10000, 33, 33, 'B_128_lr_0.001', 0.50)
+# csv_writer_acc_count_wpl('description', [0.55, 0.55], 15, ['15', '16'], 'time')
