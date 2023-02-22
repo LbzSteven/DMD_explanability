@@ -9,8 +9,7 @@ from scipy.fftpack import fft, fftfreq
 # from statsmodels.tsa.stattools import acf
 import seaborn as sns
 
-from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
-    TD_group_number_30, DMD_group_number_30, all_group_number_30, bad_sample_30, six_min_path_29, hundred_meter_path_26
+from constants import *
 
 dir_list = os.listdir("dataset")
 
@@ -76,7 +75,7 @@ def raw_data_image():
         ax.set_ylabel("sensor data")
 
         plt.savefig(os.path.join('./visualize/raw_data', csv_file_name.split('.')[0]))
-
+        plt.close()
 
 def normalized_data_image_all(labels=None):  # wrong way to do it
     if labels is None:
@@ -125,8 +124,10 @@ def normalized_data_image_all(labels=None):  # wrong way to do it
         ax.set_ylabel("sensor data")
         if label in DMD_group_number:
             plt.savefig(os.path.join('./visualize/normalized_data', label) + ' DMD')
+            plt.close()
         else:
             plt.savefig(os.path.join('./visualize/normalized_data', label) + ' Control')
+            plt.close()
 
 
 def time_intervals_checking():
@@ -175,6 +176,7 @@ def mapping_same_x_for_first_six():
     ax.legend()
     # plt.show()
     plt.savefig("1.jpg")
+    plt.close()
 
 
 def visualize_raw_x_axis(sample_number=100, label_set=None):
@@ -204,7 +206,7 @@ def visualize_raw_x_axis(sample_number=100, label_set=None):
         i += 1
     ax.legend()
     plt.savefig("visualize_x_axis_12_14_" + str(sample_number))
-
+    plt.close()
 
 def visualize_one_person(sample_number=None, labels=None):
     if labels is None:
@@ -240,8 +242,10 @@ def visualize_one_person(sample_number=None, labels=None):
 
         if label in DMD_group_number:
             plt.savefig(os.path.join('./visualize/raw_data', label + '_' + str(sample_number)) + ' DMD')
+            plt.close()
         else:
             plt.savefig(os.path.join('./visualize/raw_data', label + '_' + str(sample_number)) + ' Control')
+            plt.close()
 
 
 def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', save_dir='./visualize/FFT',
@@ -279,7 +283,7 @@ def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', sa
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
     plt.savefig(os.path.join(file_dir, label + '_' + axis_marker + ''))
-
+    plt.close()
     # plt.show()
     # print(xf)
     top_k = top_number_K_frequency
@@ -299,7 +303,7 @@ def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', sa
     ax2.grid()
     ax2.legend()
     plt.savefig(os.path.join(file_dir, label + '_phase_' + axis_marker))
-
+    plt.close()
     fig, ax2 = plt.subplots(figsize=(15, 6))
     ax2.plot(xf, yf, label='magnitude' + axis_marker)
     ax2.set_xlabel('fft freq')
@@ -307,7 +311,7 @@ def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', sa
     ax2.grid()
     ax2.legend()
     plt.savefig(os.path.join(file_dir, label + '_' + axis_marker))
-
+    plt.close()
     # power = np.abs(fft_series)
     # sample_freq = fftfreq(fft_series.size)
     # pos_mask = np.where(sample_freq > 0)
@@ -331,9 +335,10 @@ def FFT(data, sample_number, sample_spacing, label='990012', axis_marker='x', sa
 
 
 def frequency_by_FFT(labels=None, read_dir="dataset", save_dir='./visualize/FFT/12_people'):
-    if labels is None:
-        # labels = ['990012']
-        labels = all_group_number
+    # if labels is None:
+    #     # labels = ['990012']
+    #     labels = all_group_number
+    labels = [i.split('.')[0] for i in os.listdir(dataset_path)]
     for label in labels:
         csv_data = pd.read_csv(os.path.join(read_dir, label + '.csv'))
         np_data = np.array(csv_data)
@@ -362,7 +367,7 @@ def frequency_by_FFT(labels=None, read_dir="dataset", save_dir='./visualize/FFT/
             vertical = x
             mediolateral = y
             anteroposterior = z
-        print("The frequency an phase of '" + label + "'")
+        # print("The frequency an phase of '" + label + "'")
         sample_number = ts.shape[0]
         sample_spacing = (ts[-1] - ts[0]) / ts.shape[0]
         # sample_spacing = 0.033
@@ -533,50 +538,50 @@ def visualize_vma(dataset_path, save_path, sample_number=100, position=None):
             mediolateral = np.array(np_data[:, 2])
             anteroposterior = np.array(np_data[:, 3])
 
-        elif position == 'truncate':
-            csv_data = pd.read_csv(os.path.join("dataset/truncate", label + '.csv'))
-            np_data = np.array(csv_data)
-            ts = np.array(np_data[:, 0])
-            vertical = np.array(np_data[:, 1])
-            mediolateral = np.array(np_data[:, 2])
-            anteroposterior = np.array(np_data[:, 3])
-            label = 'truncate' + label
-
-        elif position == 'first':
-            if label in high_sample_rate:
-                sample_number = 300
-            ts = np.array(np_data[0:sample_number, 0])
-            vertical = np.array(np_data[0:sample_number, 1])
-            mediolateral = np.array(np_data[0:sample_number, 2])
-            anteroposterior = np.array(np_data[0:sample_number, 3])
-
-            # if label == '990017':
-            #     ts = np.array(np_data[50:sample_number+50, 0])
-            #     vertical = np.array(np_data[50:sample_number+50, 1])
-            #     mediolateral = np.array(np_data[50:sample_number+50, 2])
-            #     anteroposterior = np.array(np_data[50:sample_number+50, 3])
-
-            label = 'first' + str(sample_number) + 'th' + label
-        elif position == 'last':
-            if label in high_sample_rate:
-                sample_number = 300
-            ts = np.array(np_data[-sample_number:-1, 0])
-            vertical = np.array(np_data[-sample_number:-1, 1])
-            mediolateral = np.array(np_data[-sample_number:-1, 2])
-            anteroposterior = np.array(np_data[-sample_number:-1, 3])
-
-            # if label == '990018':
-            #     ts = np.array(np_data[-(sample_number+50):-50, 0])
-            #     vertical = np.array(np_data[-(sample_number+50):-50, 1])
-            #     mediolateral = np.array(np_data[-(sample_number+50):-50, 2])
-            #     anteroposterior = np.array(np_data[-(sample_number+50):-50, 3])
-
-            label = 'last' + str(sample_number) + 'th' + label
+        # elif position == 'truncate':
+        #     csv_data = pd.read_csv(os.path.join("dataset/truncate", label + '.csv'))
+        #     np_data = np.array(csv_data)
+        #     ts = np.array(np_data[:, 0])
+        #     vertical = np.array(np_data[:, 1])
+        #     mediolateral = np.array(np_data[:, 2])
+        #     anteroposterior = np.array(np_data[:, 3])
+        #     label = 'truncate' + label
+        #
+        # elif position == 'first':
+        #     if label in high_sample_rate:
+        #         sample_number = 300
+        #     ts = np.array(np_data[0:sample_number, 0])
+        #     vertical = np.array(np_data[0:sample_number, 1])
+        #     mediolateral = np.array(np_data[0:sample_number, 2])
+        #     anteroposterior = np.array(np_data[0:sample_number, 3])
+        #
+        #     # if label == '990017':
+        #     #     ts = np.array(np_data[50:sample_number+50, 0])
+        #     #     vertical = np.array(np_data[50:sample_number+50, 1])
+        #     #     mediolateral = np.array(np_data[50:sample_number+50, 2])
+        #     #     anteroposterior = np.array(np_data[50:sample_number+50, 3])
+        #
+        #     label = 'first' + str(sample_number) + 'th' + label
+        # elif position == 'last':
+        #     if label in high_sample_rate:
+        #         sample_number = 300
+        #     ts = np.array(np_data[-sample_number:-1, 0])
+        #     vertical = np.array(np_data[-sample_number:-1, 1])
+        #     mediolateral = np.array(np_data[-sample_number:-1, 2])
+        #     anteroposterior = np.array(np_data[-sample_number:-1, 3])
+        #
+        #     # if label == '990018':
+        #     #     ts = np.array(np_data[-(sample_number+50):-50, 0])
+        #     #     vertical = np.array(np_data[-(sample_number+50):-50, 1])
+        #     #     mediolateral = np.array(np_data[-(sample_number+50):-50, 2])
+        #     #     anteroposterior = np.array(np_data[-(sample_number+50):-50, 3])
+        #
+        #     label = 'last' + str(sample_number) + 'th' + label
         else:
             raise Exception("Sorry, position wrong")
         fig, ax = plt.subplots(figsize=(10, 6), dpi=400)
         # print(ts.shape)
-        ts = np.linspace(0.0, len(ts)*0.01, num=len(ts)) # on sample data
+        ts = np.linspace(0.0, len(ts) * 0.01, num=len(ts))  # on sample data
         # print(ts.shape)
         ax.plot(ts, vertical, label='vertical')
         ax.plot(ts, mediolateral, label='mediolateral')
@@ -593,13 +598,22 @@ def visualize_vma(dataset_path, save_path, sample_number=100, position=None):
         plt.close()
 
 
-dataset_path = 'dataset/30_dmd_data_set/100-meter-walk'
-save_path = './visualize/30_people_vma/hundred_meter_by_actual_time'
-people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]
+datasets = [L1_path_30, L2_path_30, L3_path_30, L4_path_30, L5_path_30]
+# dataset_path = 'dataset/30_dmd_data_set/100-meter-walk'
+# save_path = './visualize/30_people_vma/hundred_meter_by_actual_time'
+# people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]
 
-visualize_vma(dataset_path=dataset_path, save_path=save_path, position=None)
+# for path in datasets:
+#     dataset_path = path
+#     save_path = './visualize/30_people_vma/'+path.split('/')[-1]+'_by_actual_time'
+#     visualize_vma(dataset_path=dataset_path, save_path=save_path, position=None)
 # time_intervals_checking()
-# frequency_by_FFT(labels=people_number, read_dir=dataset_path,
-#                  save_dir=save_path)
+
+for path in datasets:
+    dataset_path = path
+    save_path = './visualize/FFT/'+path.split('/')[-1]+'_by_actual_time'
+    people_number = [i.split('.')[0] for i in os.listdir(dataset_path)]
+    frequency_by_FFT(labels=people_number, read_dir=dataset_path,
+                     save_dir=save_path)
 
 # frequency_by_FFT(labels=None)

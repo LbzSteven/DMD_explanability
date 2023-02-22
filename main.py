@@ -6,6 +6,7 @@ import time
 import numpy as np
 import pandas as pd
 import torch
+import exp_variants
 from exp_variants import multiple_running
 from CNN_torch import CNN_DMD, CNN_var, CNN_Pooling, one_axis_CNN, CNN_for_window_FFT
 from utils import csv_writer_acc_count_wpl
@@ -14,6 +15,7 @@ from constants import DMD_group_number, TD_group_number, all_group_number, low_s
     exclude_list_100m
 
 from utils import *
+
 
 
 if __name__ == "__main__":
@@ -26,7 +28,12 @@ if __name__ == "__main__":
     EPOCHS = 100
     LEARN_RATE = 0.001
     BATCH_SIZE = 2048
-    NUM_OF_GPU = 7
+    exp_variants.total_gpu_num = 8
+    exp_variants.NUM_OF_GPU = 7
+    exp_variants.max_process_per_gpu = 1
+    exp_variants.used_gpu_list = torch.multiprocessing.Manager().list([0] * exp_variants.total_gpu_num)
+    exp_variants.lock = torch.multiprocessing.Lock()
+
     os.environ["CUDA_VISIBLE_DEVICES"] = '0,1,2,3,4,5,6'
     # print('resnet_100_meter_walk norm true and 6 min true and false')
     torch.multiprocessing.set_start_method('spawn')

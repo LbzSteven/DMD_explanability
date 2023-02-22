@@ -1,10 +1,8 @@
 import os
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.fftpack import fft, fftfreq
-from constants import DMD_group_number, TD_group_number, all_group_number, low_sample_rate, high_sample_rate, \
-    TD_group_number_30, DMD_group_number_30, all_group_number_30, L3_path_30
+from scipy.fftpack import fft
+from constants import DMD_group_number, all_group_number, low_sample_rate, DMD_group_number_30, all_group_number_30, L3_path_30
 
 
 def window_oper(window_size=33, window_step=33, dataset_marker='30', dataset_path=L3_path_30,
@@ -160,16 +158,4 @@ def window_FFT_oper(numbers=None, window_size=80, window_step=1, dataset='12'):
 
     return [paitent_makers, labels, window_data]
 
-
-def person_characteristic_save():
-    ID = all_group_number
-    label = [1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1]
-    age = [5, 11, 12, 10, 3, 11, 12, 15, 7, 5, 9, 5]
-    weight = [34.7, 38.4, 52.6, 38.5, 20, 44.5, 57.7, 63.7, 29.8, 20.3, 41.8, 22.9]
-    height = [127, 147.6, 145, 124.5, 106.3, 144, 155.6, 153.3, 133, 119.3, 132.9, 111.8]
-    NSAA_score = [31, 34, 29, 26, 31, 34, 34, 15, 13, 34, 34, 25]
-    df = pd.DataFrame({'ID': ID, 'label': label, 'age': age, 'weight': weight, 'height': height, 'NSAA': NSAA_score})
-    df.to_csv('dataset/person_characteristic.csv', index=False, sep=',')
-
-
-person_characteristic_save()
+# person_characteristic_save()

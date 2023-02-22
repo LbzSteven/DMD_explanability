@@ -1,4 +1,5 @@
 import math
+import os.path
 import time
 
 import pandas as pd
@@ -11,15 +12,28 @@ from utils import *
 from datetime import datetime
 from test import model_test
 from window import window_oper
+from constants import *
+from people_characteristic_builder import people_list
 import torch
 # from matplotlib import pyplot as plt
 from torch import nn
 
 NUM_WORKERS = 0
-
-
+total_gpu_num = 8
+max_process_per_gpu = 1
+used_gpu_list = torch.multiprocessing.Manager().list([0] * total_gpu_num)
+lock = torch.multiprocessing.Lock()
+NUM_OF_GPU = 7
 def one_fold_training(model, arg_list, number, patient_makers, window_labels, window_data, NORMALIZE, EPOCH, device,
                       GET_OUTPUT_PROB, save_dir, SAVE_IMAGE, LEARN_RATE, BATCH_SIZE):
+    lock.acquire()
+    if device is None:
+        for i in range(NUM_OF_GPU):
+            if used_gpu_list[i] < max_process_per_gpu:
+                device = i
+                break
+    used_gpu_list[device] += 1
+    lock.release()
 
     if (GET_OUTPUT_PROB or SAVE_IMAGE) and (not os.path.exists(save_dir)):
         os.makedirs(save_dir)
@@ -118,7 +132,9 @@ def one_fold_training(model, arg_list, number, patient_makers, window_labels, wi
             #        scheduler.get_last_lr()[0], time.time() - start_time, conf_total_test))
 
     # print(prof.key_averages().table(sort_by="self_cpu_time_total", row_limit=10))
-
+    lock.acquire()
+    used_gpu_list[device] -= 1
+    lock.release()
     if SAVE_IMAGE:
         save_dir_epoch_acc = os.path.join(save_dir, 'epoch_acc')
         if not os.path.exists(os.path.join(save_dir_epoch_acc)):
@@ -267,6 +283,32 @@ def person_variance(model, arg_list, word_marker, lr, batch_size, epochs, window
               % (number, mean_person[fold_i], std_person[fold_i], min_person[fold_i], max_person[fold_i]))
 
 
+def major_voting_in_datasets(model, arg_list, word_marker, lr, batch_size, epochs, window_step, window_size,
+                             normalize, num_of_gpu, get_output_prob, save_image, TRAIN_JUST_ONE, ):
+    datasets_path = 'dataset/30_dmd_data_set'
+    # plot L1 -L5 to see if there is some one need excluded
+
+    EPOCH = epochs
+    WINDOW_STEP = window_step
+    WINDOW_SIZE = window_size
+
+    # get 7 original data cut in window here
+    # get the model things here
+    # need a structure for ['paitent number','Class number','L1', 'L2', 'L3', 'L4', 'L5', '100m', '6min'] like this has:DMD/TD/NONE value
+    parameters_lists = []
+    for i in range(len(people30_dataset_path_list)):
+        patient_makers, window_labels, window_data = window_oper(WINDOW_SIZE, WINDOW_STEP,
+                                                                 dataset_marker='30',
+                                                                 dataset_path=people30_dataset_path_list[i], )
+        for person in people_list:
+            if not (person.paths[i] is None):
+                save_dir = ''
+                parameters_lists.append([model, arg_list, person.N, patient_makers, window_labels, window_data,
+                                         normalize, EPOCH, device, get_output_prob,
+                                         save_dir, save_image, lr, batch_size])
+
+
+# major_voting_in_datasets()
 def multiple_running(model, arg_list, lr, batch_size, dataset_path,
                      normalize, save_image, get_output_prob, w_size, w_step, epochs, num_of_gpu,
                      repeat_time=1, save_mul=False, save_dir_mul='./save_result_mul',
